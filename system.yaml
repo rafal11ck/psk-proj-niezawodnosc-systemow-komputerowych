@@ -1,0 +1,26 @@
+# Dane wejściowe projektu. Z tego pliku lecą tabele i schemat w raporcie.
+
+N: 3 # UZUPEŁNIĆ — numer studenckiej grupy projektowej; od punktu 2 wchodzi do λ i t
+
+# Elementy nieodnawialne. Liczba elementów n wynika z długości tej listy.
+# `group` nazywa zbiór elementów pełniących tę samą funkcję — wystarczy, że
+# jeden z nich jest zdatny. Element bez `group` jest krytyczny: nie ma zastępstwa.
+elements:
+  - { id: 1, name: Zasilacz DC }
+  - { id: 2, name: Płyta główna z procesorem }
+  - { id: 3, name: Pamięć operacyjna ECC }
+  - { id: 4, name: Dysk systemowy A, group: dyski }
+  - { id: 5, name: Dysk systemowy B, group: dyski }
+  - { id: 6, name: Interfejs Ethernet, group: transmisja }
+  - { id: 7, name: Modem LTE, group: transmisja }
+  - { id: 8, name: Układ chłodzenia }
+
+# Schemat funkcjonalny (pkt 1b) — połączenia między elementami.
+links:
+  - { from: 1, to: 2, label: "12 V" }
+  - { from: 1, to: 8, label: "12 V" }
+  - { from: 2, to: 3, label: "DDR4" }
+  - { from: 2, to: 4, label: "SATA" }
+  - { from: 2, to: 5, label: "SATA" }
+  - { from: 2, to: 6, label: "PCIe" }
+  - { from: 2, to: 7, label: "PCIe" }

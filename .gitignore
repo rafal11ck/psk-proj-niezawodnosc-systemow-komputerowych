@@ -1,0 +1,4 @@
+out/
+*.pdf
+!zakleta-ksiega-w-niej-kryje-sie-potega.pdf
+.task/

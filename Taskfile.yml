@@ -1,0 +1,8 @@
+version: "3"
+tasks:
+  default: [task: check, task: build]
+  build: [typst compile --root . spr/spr.typ spr.pdf]
+  watch: [typst watch --root . spr/spr.typ spr.pdf]
+  check: [go run ./src]
+  test: [go test ./...]
+  clean: [rm -f spr.pdf]
