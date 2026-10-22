@@ -3,32 +3,43 @@
 Analiza niezawodnościowa serwera brzegowego monitoringu przemysłowego.
 
 ```sh
-task        # sprawdza system.yaml i składa spr.pdf
-task check  # sama walidacja danych
-task test   # testy walidacji
+task        # przelicza dane i składa spr.pdf
+task calc   # system.yaml -> out/results.yaml
+task test   # testy
 task watch  # przebudowuje raport na bieżąco
+```
+
+```
+system.yaml  ──►  src/ (Go)  ──►  out/results.yaml  ──►  spr/spr.typ  ──►  spr.pdf
 ```
 
 | ścieżka | rola |
 |---|---|
 | `system.yaml` | dane: `N`, elementy, połączenia, struktura niezawodnościowa |
+| `cmd/nsk/` | program: wczytanie, złożenie wyniku |
+| `internal/model/` | typy danych i ich walidacja |
+| `internal/reliability/` | $\lambda_i$, $R_s(t)$, ścieżki i cięcia |
 | `spr/spr.typ` | treść raportu |
 | `spr/rbd.typ` | rysowanie schematu struktury niezawodnościowej (CeTZ) |
-| `src/` | wczytanie i walidacja `system.yaml` |
 
-Punkt 1 jest opisowy — nie ma w nim obliczeń. Program sprawdza tylko spójność
-danych: numery elementów tworzą zbiór 1..n, połączenia wskazują na istniejące
-elementy, struktura obejmuje każdy element dokładnie raz i zawiera węzeł
-równoległy (wymóg „przynajmniej 2 elementy alternatywne").
+Żadna liczba ani etykieta w raporcie nie jest wpisana ręcznie. Ze struktury
+wyprowadzane są: schemat, podział na elementy krytyczne i alternatywne,
+postać wykładnicza $R_s(t)$ oraz ścieżki i cięcia minimalne.
 
-Z drzewa `structure` wyprowadzane są: schemat w 1d, podział na elementy
-krytyczne i alternatywne oraz kolumna „Rola" w tabeli. Nic z tego nie jest
-wpisane w tekst ręcznie.
+## Dokładność
+
+Intensywności $\lambda_i$ to całkowite krotności $10^{-6}$ 1/h, a współczynniki
+i wykładniki postaci wykładniczej $R_s(t)=\sum c_j e^{-r_j \mu t}$ są całkowite.
+$ET_s$ liczone jest jako suma ułamków na `big.Rat`, więc **dokładnie** —
+całkowania numerycznego nie ma. Jedyne zaokrąglenie w całym rachunku to
+`math.Exp` przy drukowaniu $R_s$ i $P_s$.
 
 ## Stan
 
-- [x] 1a opis systemu i elementów
-- [x] 1b schemat funkcjonalny
-- [x] 1c opis niezawodnościowy elementów
-- [x] 1d struktura niezawodnościowa — schemat
-- [ ] 2–5 λᵢ, Rᵢ(t), Rs(t), Ps, ETs, ścieżki i cięcia, redundancja, wnioski
+- [x] 1a–1d opis systemu, schemat funkcjonalny, opis niezawodnościowy, struktura
+- [x] 2a $R_s(t)$ w postaci wykładniczej
+- [x] 2b $P_s(t, t+\Delta)$
+- [x] 2c $ET_s$
+- [x] 2d minimalne ścieżki zdatności
+- [x] 2e minimalne cięcia
+- [ ] 3–5 redundancja, warianty rezerwowania, wnioski

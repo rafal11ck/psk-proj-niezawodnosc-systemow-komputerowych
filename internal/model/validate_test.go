@@ -1,4 +1,4 @@
-package main
+package model
 
 import (
 	"strings"
@@ -27,7 +27,7 @@ func check(t *testing.T, doc string) error {
 	if err := yaml.Unmarshal([]byte(doc), &cfg); err != nil {
 		t.Fatalf("yaml: %v", err)
 	}
-	return validate(cfg)
+	return Validate(cfg)
 }
 
 func TestValidDocumentPasses(t *testing.T) {

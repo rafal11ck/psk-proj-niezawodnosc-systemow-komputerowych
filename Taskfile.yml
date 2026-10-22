@@ -1,8 +1,8 @@
 version: "3"
 tasks:
-  default: [task: check, task: build]
+  default: [task: calc, task: build]
+  calc: [go run ./cmd/nsk -in system.yaml -out out/results.yaml]
   build: [typst compile --root . spr/spr.typ spr.pdf]
   watch: [typst watch --root . spr/spr.typ spr.pdf]
-  check: [go run ./src]
   test: [go test ./...]
-  clean: [rm -f spr.pdf]
+  clean: [rm -rf out spr.pdf]

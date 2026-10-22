@@ -2,6 +2,21 @@
 #import "rbd.typ": rbd
 
 #let cfg = yaml("/system.yaml")
+#let res = yaml("/out/results.yaml")
+
+// Polski separator dziesiętny; liczby formatuje program.
+#let pl(x) = str(x).replace(".", ",")
+
+// Długie sumy łamane na wiersze: lewa strona, kolejne wiersze składników,
+// na końcu wynik. Bez tego podstawienia nie mieszczą się w szerokości strony.
+#let rownanie(lewa, skladniki, wynik, na-wiersz: 3) = {
+  let wiersze = skladniki.chunks(na-wiersz).map(w => w.join($ $))
+  let linie = wiersze
+    .enumerate()
+    .map(((k, w)) => if k == 0 { $#lewa &= #w$ } else { $& #w$ })
+  linie.push($&= #wynik$)
+  math.equation(block: true, linie.join($ \ $))
+}
 
 // ── Dane do strony tytułowej (uzupełnić) ────────────────────────────────────
 // Tytuł, autor i data to metadane dokumentu — trafiają też do właściwości PDF-a.
@@ -101,6 +116,16 @@
   if poziom.len() == 1 { numbering("1.", poziom.last()) } else if poziom.len() == 2 { numbering("a)", poziom.last()) }
 })
 #show table.cell.where(y: 0): strong
+
+// Odnośnik do podpunktu pokazuje pełny numer ("1d)"), mimo że sam nagłówek
+// jest numerowany samą literą, jak w treści zadania.
+#show ref: it => {
+  let el = it.element
+  if el != none and el.func() == heading and el.level == 2 {
+    let n = counter(heading).at(el.location())
+    numbering("1", n.at(0)) + numbering("a)", n.at(1))
+  } else { it }
+}
 
 // ── Strona tytułowa ──────────────────────────────────────────────────────────
 #page(numbering: none)[
@@ -286,7 +311,7 @@ element zdatny.
   caption: [Kryteria uszkodzenia i rola elementów w systemie.],
 )
 
-== Struktura niezawodnościowa systemu -- schemat
+== Struktura niezawodnościowa systemu -- schemat <struktura>
 
 System ma strukturę *szeregowo-równoległą*. Część szeregową tworzą elementy
 #krytyczne, a podstruktury równoległe -- #rownolegle.
@@ -295,3 +320,145 @@ System ma strukturę *szeregowo-równoległą*. Część szeregową tworzą elem
   rbd(cfg.structure, i => text(size: 10pt)[E#i]),
   caption: [Struktura niezawodnościowa systemu.],
 )
+
+= Zakładamy
+
+Czas poprawnej pracy elementów jest zgodny z rozkładem wykładniczym,
+o intensywnościach uszkodzeń zadanych w treści projektu dla numeru grupy
+projektowej $N = #res.N$ i liczby elementów $n = #res.count$:
+
+$ lambda_i = 2 N i dot 10^(-6) thin [1\/h] quad & "dla" i "nieparzystych", \
+  lambda_i = 3 N (n + 1 - i) dot 10^(-6) thin [1\/h] quad & "dla" i "parzystych". $
+
+Wartości funkcji niezawodności wyznaczono dla chwili
+$t = 100 + 5 N = 100 + 5 dot #res.N = #res.t$ h.
+
+Dla każdego elementu daje to:
+
+#let lam-wzor(e) = if calc.odd(e.id) {
+  $2 dot #res.N dot #e.id$
+} else {
+  $3 dot #res.N dot (#res.count + 1 - #e.id)$
+}
+
+#figure(
+  table(
+    columns: (auto, auto, auto, auto),
+    align: (center + horizon, left, left, left),
+    inset: (x: 7pt, y: 5pt),
+    table.header(
+      [Nr],
+      [$lambda_i thin [1\/h]$],
+      [$R_i (#res.t "h") = e^(-lambda_i t)$],
+      [$E T_i = 1\/lambda_i thin ["h"]$],
+    ),
+    ..res.elements.map(e => (
+      [E#e.id],
+      $#lam-wzor(e) dot 10^(-6) = #e.lambdaUnits dot 10^(-6)$,
+      $e^(-#e.lambdaUnits dot 10^(-6) dot #res.t) = #pl(e.R)$,
+      $1 / (#e.lambdaUnits dot 10^(-6)) = #pl(e.et)$,
+    )).flatten()
+  ),
+  caption: [Intensywności uszkodzeń i niezawodność elementów dla $N = #res.N$.],
+)
+
+== Funkcja niezawodności systemu $R_s (t)$
+
+Dla struktury szeregowo-równoległej z punktu @struktura:
+
+$ R_s (t) = R_1 R_2 R_3 (R_4 + R_5 - R_4 R_5)(R_6 + R_7 - R_6 R_7) R_8. $
+
+Po wymnożeniu nawiasów otrzymuje się #res.monomials.len() jednomianów --- po
+jednym na każdy wybór gałęzi w obu podstrukturach równoległych. Podstawiając
+$R_i (t) = e^(-lambda_i t)$, wykładniki składników iloczynu sumują się, co dla
+każdego jednomianu daje jeden wykładnik:
+
+#let iloczyn(m) = m.elements.map(i => $R_#i$).join()
+#let suma(m) = m.elements.map(i => str(res.elements.at(i - 1).lambdaUnits)).join(" + ")
+
+#figure(
+  table(
+    columns: (auto, auto, 1fr, auto),
+    align: (center, left, right, right),
+    table.header[Znak][Jednomian][Suma $lambda_i dot 10^6$][Wykładnik],
+    ..res.monomials.map(m => (
+      [#if m.coeff < 0 [$-$] else [$+$]],
+      [$#iloczyn(m)$],
+      [#suma(m)],
+      [#m.rate],
+    )).flatten()
+  ),
+  caption: [Rozwinięcie $R_s (t)$ --- jednomiany i ich wykładniki.],
+)
+
+Jednomiany o jednakowym wykładniku sumują się, więc #res.monomials.len()
+jednomianów przechodzi w #res.terms.len() wyrazów --- wykładnik 168 występuje
+dwukrotnie, co daje przy nim współczynnik 2. Ostatecznie, dla
+$mu = 10^(-6)$ $1\/h$:
+
+Podstawiając $t = #res.t$ h:
+
+#let czlon(tm, pierwszy) = {
+  let znak = if tm.coeff < 0 { $-$ } else if pierwszy { none } else { $+$ }
+  let a = calc.abs(tm.coeff)
+  let wsp = if a == 1 { none } else { $#a$ }
+  $#znak #wsp e^(-#tm.rate dot 10^(-6) dot #res.t)$
+}
+
+#rownanie(
+  $R_s (#res.t "h")$,
+  res.terms.enumerate().map(((k, tm)) => czlon(tm, k == 0)),
+  $#pl(res.rs).$,
+)
+
+== Prawdopodobieństwo braku uszkodzenia w przedziale $(t, t + Delta)$
+
+Dla $Delta = #res.deltaT$ h, czyli przedziału
+$(#res.t, #(res.t + res.deltaT))$ h:
+
+$ P_s (t, t + Delta) &= 1 - [R_s (t) - R_s (t + Delta)] \
+  &= 1 - [#pl(res.rs) - #pl(res.rsDelta)] = #pl(res.ps). $
+
+== Oczekiwany czas zdatności systemu
+
+Każdy wyraz całkuje się osobno, $integral_0^infinity c thin e^(-r mu t) dif t = c\/(r mu)$:
+
+#let ulamek(tm, pierwszy) = {
+  let znak = if tm.coeff < 0 { $-$ } else if pierwszy { none } else { $+$ }
+  let a = calc.abs(tm.coeff)
+  $#znak #a / (#tm.rate mu)$
+}
+
+// Wynik dokładny: suma ułamków, więc da się go podać jako ułamek.
+#let dokladny = {
+  let cz = res.etsExact.split("/")
+  if cz.len() == 2 { $#cz.at(0) / #cz.at(1)$ } else { $#res.etsExact$ }
+}
+
+#rownanie(
+  $E T_s = integral_0^infinity R_s (t) dif t$,
+  res.terms.enumerate().map(((k, tm)) => ulamek(tm, k == 0)),
+  $#dokladny approx #pl(res.ets) " h".$,
+  na-wiersz: 4,
+)
+
+== Zbiór minimalnych ścieżek zdatności
+
+#let zbior(s) = $\{#s.map(str).join(", ")\}$
+#let xs(s) = s.map(i => $x_#i$).join()
+
+$ #res.paths.map(zbior).join($, $) $
+
+Minimalna formuła alternatywna:
+
+$ f^((#res.count))(x) = #res.paths.map(xs).join($ or $) $
+
+== Zbiór minimalnych cięć
+
+$ #res.cuts.map(zbior).join($, $) $
+
+Minimalna formuła koniunkcyjna:
+
+$ f^((#res.count))(x) = #res.cuts.map(c => {
+  if c.len() == 1 { $x_#c.at(0)$ } else { $(#c.map(i => $x_#i$).join($ or $))$ }
+}).join($ and $) $

@@ -1,4 +1,4 @@
-package main
+package model
 
 import (
 	"errors"
@@ -11,7 +11,7 @@ import (
 
 // validate runs the struct tags plus the whole-document rules, reporting every
 // problem at once.
-func validate(cfg Config) error {
+func Validate(cfg Config) error {
 	v := validator.New(validator.WithRequiredStructEnabled())
 	v.RegisterStructValidation(checkDocument, Config{})
 
