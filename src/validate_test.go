@@ -11,10 +11,14 @@ const good = `
 N: 3
 elements:
   - {id: 1, name: A}
-  - {id: 2, name: B, group: g}
-  - {id: 3, name: C, group: g}
+  - {id: 2, name: B}
+  - {id: 3, name: C}
 links:
   - {from: 1, to: 2, label: x}
+structure:
+  ser:
+    - el: 1
+    - par: [{el: 2}, {el: 3}]
 `
 
 func check(t *testing.T, doc string) error {
@@ -35,18 +39,21 @@ func TestValidDocumentPasses(t *testing.T) {
 func TestInvalidDocumentsAreRejected(t *testing.T) {
 	cases := map[string]struct{ doc, want string }{
 		"numer elementu poza 1..n": {
-			strings.Replace(good, "{id: 3, name: C, group: g}", "{id: 50, name: C, group: g}", 1), "zbiór 1..3"},
+			strings.Replace(good, "{id: 3, name: C}", "{id: 50, name: C}", 1), "zbiór 1..3"},
 		"powtorzony numer": {
-			strings.Replace(good, "{id: 3, name: C, group: g}", "{id: 2, name: C, group: g}", 1), "zbiór 1..3"},
+			strings.Replace(good, "{id: 3, name: C}", "{id: 2, name: C}", 1), "zbiór 1..3"},
 		"link do nieistniejacego elementu": {
 			strings.Replace(good, "to: 2", "to: 99", 1), "nieistniejący element 99"},
 		"element bez nazwy": {
-			strings.Replace(good, "{id: 2, name: B, group: g}", "{id: 2, group: g}", 1), `"Name"`},
-		"grupa jednoelementowa": {
-			strings.Replace(good, "{id: 3, name: C, group: g}", "{id: 3, name: C}", 1),
-			"zawiera tylko element"},
+			strings.Replace(good, "{id: 2, name: B}", "{id: 2}", 1), `"Name"`},
+		"struktura pomija element": {
+			strings.Replace(good, "    - el: 1\n", "", 1), "dokładnie raz"},
+		"struktura powtarza element": {
+			strings.Replace(good, "par: [{el: 2}, {el: 3}]", "par: [{el: 2}, {el: 2}]", 1), "dokładnie raz"},
+		"wezel z dwoma polami naraz": {
+			strings.Replace(good, "- el: 1\n", "- {el: 1, ser: [{el: 9}]}\n", 1), "dokładnie jedno z pól"},
 		"brak elementow alternatywnych": {
-			strings.ReplaceAll(good, ", group: g", ""), "funkcje alternatywne"},
+			strings.Replace(good, "par: [{el: 2}, {el: 3}]", "ser: [{el: 2}, {el: 3}]", 1), "funkcje alternatywne"},
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {

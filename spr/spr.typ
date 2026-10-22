@@ -1,4 +1,5 @@
 #import "@preview/diagraph:0.3.8"
+#import "rbd.typ": rbd
 
 #let cfg = yaml("/system.yaml")
 
@@ -6,7 +7,7 @@
 // Tytuł, autor i data to metadane dokumentu — trafiają też do właściwości PDF-a.
 #set document(
   title: [
-    Projekt -- Niezawodnosć systemów komputerowych \
+    Projekt -- Niezawodność systemów komputerowych \
     Analiza niezawodnościowa serwera brzegowego monitoringu przemysłowego],
   author: (
     "inż. Rafał Grot",
@@ -43,15 +44,52 @@
   "8": "Spadek wydajności chłodzenia powodujący przekroczenie progu termicznego.",
 )
 
-// Rola wynika z pola `group` w system.yaml, nie jest wpisywana osobno.
-#let rola(e) = if "group" in e {
-  let inni = cfg
-    .elements
-    .filter(x => x.at("group", default: none) == e.group and x.id != e.id)
-    .map(x => "E" + str(x.id))
-  "alternatywny (z " + inni.join(", ") + ")"
-} else { "krytyczny" }
-#let krytyczne = cfg.elements.filter(e => "group" not in e).map(e => "E" + str(e.id)).join(", ")
+// Role wynikają ze struktury niezawodnościowej: elementy w jednym węźle `par`
+// pełnią funkcje alternatywne. Nic nie jest wpisywane osobno.
+#let dzieci(n) = n.at("ser", default: n.at("par", default: ()))
+#let elementy(n) = if "el" in n { (n.el,) } else { dzieci(n).map(elementy).flatten() }
+
+// Dla każdego elementu: lista elementów zamiennych (pusta, gdy krytyczny).
+#let zamienniki-z(n) = {
+  let out = (:)
+  if "par" in n {
+    let grupy = n.par.map(elementy)
+    for (k, g) in grupy.enumerate() {
+      let inne = grupy.enumerate().filter(p => p.at(0) != k).map(p => p.at(1)).flatten()
+      for e in g { out.insert(str(e), inne) }
+    }
+  }
+  for c in dzieci(n) {
+    for (k, v) in zamienniki-z(c) { out.insert(k, v) }
+  }
+  out
+}
+#let zamienniki = zamienniki-z(cfg.structure)
+
+// Wszystkie podstruktury równoległe, np. "E4/E5 oraz E6/E7".
+#let grupy-z(n) = {
+  let out = ()
+  if "par" in n { out.push(n.par.map(elementy).flatten()) }
+  for c in dzieci(n) { out += grupy-z(c) }
+  out
+}
+#let rownolegle = {
+  let g = grupy-z(cfg.structure).map(p => p.map(i => "E" + str(i)).join("/"))
+  if g.len() < 2 { g.join("") } else { g.slice(0, -1).join(", ") + " oraz " + g.last() }
+}
+
+#let rola(e) = {
+  let inne = zamienniki.at(str(e.id), default: ())
+  if inne.len() == 0 { "krytyczny" } else {
+    "alternatywny (z " + inne.map(i => "E" + str(i)).join(", ") + ")"
+  }
+}
+#let krytyczne = {
+  cfg.elements
+    .filter(e => zamienniki.at(str(e.id), default: ()).len() == 0)
+    .map(e => "E" + str(e.id))
+    .join(", ")
+}
 
 // ── Ustawienia dokumentu ─────────────────────────────────────────────────────
 #set page(paper: "a4", margin: 2.5cm, numbering: "1")
@@ -246,4 +284,14 @@ element zdatny.
       .flatten(),
   ),
   caption: [Kryteria uszkodzenia i rola elementów w systemie.],
+)
+
+== Struktura niezawodnościowa systemu -- schemat
+
+System ma strukturę *szeregowo-równoległą*. Część szeregową tworzą elementy
+#krytyczne, a podstruktury równoległe -- #rownolegle.
+
+#figure(
+  rbd(cfg.structure, i => text(size: 10pt)[E#i]),
+  caption: [Struktura niezawodnościowa systemu.],
 )

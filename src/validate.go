@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"maps"
 	"slices"
 	"strings"
 
@@ -44,31 +43,28 @@ func checkDocument(sl validator.StructLevel) {
 			n, slices.Sorted(slices.Values(ids))))
 	}
 
-	// Elements sharing a group perform the same function; any one suffices.
-	groups := map[string][]int{}
-	for _, e := range cfg.Elements {
-		if e.Group != "" {
-			groups[e.Group] = append(groups[e.Group], e.ID)
-		}
-	}
-	for _, name := range slices.Sorted(maps.Keys(groups)) {
-		if ids := groups[name]; len(ids) < 2 {
-			fail("elements", "group", fmt.Sprintf(
-				"grupa alternatywna %q zawiera tylko element %v; potrzeba co najmniej dwóch", name, ids))
-		}
-	}
-	// Point 1 requires at least two elements performing alternative functions.
-	if len(groups) == 0 {
-		fail("elements", "group",
-			"treść zadania wymaga co najmniej 2 elementów pełniących funkcje alternatywne (pole group)")
-	}
-
 	for _, l := range cfg.Links {
 		for _, id := range []int{l.From, l.To} {
 			if id < 1 || id > n {
 				fail("links", "range", fmt.Sprintf("połączenie wskazuje na nieistniejący element %d", id))
 			}
 		}
+	}
+
+	shaped := true
+	cfg.Structure.Walk(func(nd Node) { shaped = shaped && nd.filled() == 1 })
+	if !shaped {
+		fail("structure", "shape", "każdy węzeł musi mieć dokładnie jedno z pól el/ser/par")
+	}
+	if used := cfg.Structure.Elements(); !isPermutation(used, n) {
+		fail("structure", "cover", fmt.Sprintf(
+			"struktura musi obejmować każdy element dokładnie raz, otrzymano %v",
+			slices.Sorted(slices.Values(used))))
+	}
+	// Point 1 requires at least two elements performing alternative functions.
+	if !cfg.Structure.HasParallel() {
+		fail("structure", "parallel",
+			"treść zadania wymaga co najmniej 2 elementów pełniących funkcje alternatywne (węzeł par)")
 	}
 }
 
