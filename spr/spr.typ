@@ -159,6 +159,20 @@ Ethernet albo, gdy jest ono niedostępne, przez modem LTE. Układ chłodzenia (E
 odprowadza ciepło z obudowy; jego uszkodzenie prowadzi do przegrzania i
 zatrzymania serwera.
 
+*Kryterium zdatności systemu.* System uznaje się za zdatny wtedy i tylko
+wtedy, gdy umożliwia jednoczesne realizowanie wszystkich trzech funkcji
+użytkowych:
+
+#list(
+  [przyjmowanie danych pomiarowych ze sterowników],
+  [trwały zapis tych danych w pamięci masowej],
+  [przesyłanie ich do centrum przetwarzania],
+)
+
+Utrata choćby jednej z nich oznacza niezdatność systemu: dane niezapisane albo
+nieprzesłane są tracone bezpowrotnie, więc nie ma tu stanów pośrednich ---
+system albo wykonuje swoje zadanie w całości, albo nie wykonuje go wcale.
+
 *Elementy pełniące funkcje alternatywne.* Dyski E4 i E5 przechowują identyczną
 kopię danych, więc do poprawnej pracy systemu wystarczy dowolny z nich.
 Podobnie interfejs Ethernet (E6) i modem LTE (E7) realizują to samo zadanie —
@@ -364,14 +378,84 @@ Dla każdego elementu daje to:
 
 == Funkcja niezawodności systemu $R_s (t)$
 
-Dla struktury szeregowo-równoległej z punktu @struktura:
+Funkcja niezawodności systemu $R_s (t)$ to prawdopodobieństwo, że system będzie
+poprawnie pracował w chwili $t$. System ma strukturę szeregowo-równoległą
+(punkt @struktura), dla której
 
-$ R_s (t) = R_1 R_2 R_3 (R_4 + R_5 - R_4 R_5)(R_6 + R_7 - R_6 R_7) R_8. $
+$ R_s (t) = product_(r = 1)^p R^((r))(t), quad "przy czym" quad
+  R^((r))(t) = 1 - product_(i = 1)^(n_r) [1 - R_(r,i)(t)], $
 
-Po wymnożeniu nawiasów otrzymuje się #res.monomials.len() jednomianów --- po
-jednym na każdy wybór gałęzi w obu podstrukturach równoległych. Podstawiając
-$R_i (t) = e^(-lambda_i t)$, wykładniki składników iloczynu sumują się, co dla
-każdego jednomianu daje jeden wykładnik:
+gdzie:
+
+#grid(
+  columns: (auto, 1fr),
+  row-gutter: 0.5em,
+  column-gutter: 1em,
+  align: (right + top, left),
+  [$p$], [liczba układów połączonych szeregowo,],
+  [$n_r$], [liczba części składowych $r$-tego układu, połączonych równolegle,],
+  [$R^((r))(t)$], [funkcja niezawodności $r$-tego układu,],
+  [$R_(r,i)(t)$], [funkcja niezawodności $i$-tej części składowej $r$-tego układu.],
+)
+
+#let uklady = cfg.structure.ser
+#let poj = uklady.filter(w => "el" in w).len()
+#let par-n = uklady.len() - poj
+
+W analizowanym systemie $p = #uklady.len()$: #poj układy są jednoelementowe,
+a #par-n złożone z dwóch części połączonych równolegle. Po podstawieniu
+struktury, wymnożeniu nawiasów i podstawieniu $R_i (t) = e^(-lambda_i t)$:
+
+#let czynnik-wykl(w) = if "el" in w {
+  $R_#w.el$
+} else {
+  $[1 - #elementy(w).map(i => $(1 - R_#i)$).join()]$
+}
+#let czynnik-rozw(w) = if "el" in w {
+  $R_#w.el$
+} else {
+  let e = elementy(w)
+  if e.len() == 2 {
+    $(R_#e.at(0) + R_#e.at(1) - R_#e.at(0) R_#e.at(1))$
+  } else { czynnik-wykl(w) }
+}
+#let wyraz(tm, pierwszy) = {
+  let znak = if tm.coeff < 0 { $-$ } else if pierwszy { none } else { $+$ }
+  let a = calc.abs(tm.coeff)
+  let wsp = if a == 1 { none } else { $#a$ }
+  $#znak #wsp e^(-#tm.rate mu t)$
+}
+#let wyrazy = {
+  res.terms
+    .enumerate()
+    .map(((k, tm)) => wyraz(tm, k == 0))
+    .chunks(5)
+    .map(w => w.join($ $))
+}
+
+$ R_s (t) &= #uklady.map(czynnik-wykl).join() \
+          &= #uklady.map(czynnik-rozw).join() \
+          &= sum_j c_j e^(-r_j mu t) \
+          &= #wyrazy.at(0) \
+          &#h(1em) #wyrazy.at(1), $
+
+gdzie:
+
+#grid(
+  columns: (auto, 1fr),
+  row-gutter: 0.5em,
+  column-gutter: 1em,
+  align: (right + top, left),
+  [$j$], [numer wyrazu postaci wykładniczej, $j = 1, dots, #res.terms.len()$,],
+  [$c_j$], [współczynnik całkowity $j$-tego wyrazu,],
+  [$r_j$], [wykładnik $j$-tego wyrazu, wyrażony w krotnościach $mu$,],
+  [$mu$], [jednostka intensywności uszkodzeń, $mu = 10^(-6)$ $1\/h$.],
+)
+
+Wymnożenie nawiasów daje #res.monomials.len() jednomianów --- po jednym na każdy
+wybór gałęzi w obu podstrukturach równoległych. Wykładniki składników iloczynu
+sumują się, a jednomiany o jednakowym wykładniku zbierają się w jeden wyraz;
+wykładnik 168 występuje dwukrotnie, stąd przy nim współczynnik 2.
 
 #let iloczyn(m) = m.elements.map(i => $R_#i$).join()
 #let suma(m) = m.elements.map(i => str(res.elements.at(i - 1).lambdaUnits)).join(" + ")
@@ -391,11 +475,6 @@ każdego jednomianu daje jeden wykładnik:
   caption: [Rozwinięcie $R_s (t)$ --- jednomiany i ich wykładniki.],
 )
 
-Jednomiany o jednakowym wykładniku sumują się, więc #res.monomials.len()
-jednomianów przechodzi w #res.terms.len() wyrazów --- wykładnik 168 występuje
-dwukrotnie, co daje przy nim współczynnik 2. Ostatecznie, dla
-$mu = 10^(-6)$ $1\/h$:
-
 Podstawiając $t = #res.t$ h:
 
 #let czlon(tm, pierwszy) = {
@@ -413,7 +492,9 @@ Podstawiając $t = #res.t$ h:
 
 == Prawdopodobieństwo braku uszkodzenia w przedziale $(t, t + Delta)$
 
-Dla $Delta = #res.deltaT$ h, czyli przedziału
+$P_s (t, t + Delta)$ to prawdopodobieństwo, że system nie ulegnie uszkodzeniu
+w przedziale czasu $(t, t + Delta)$, przy czym w chwili $t$ mógł on już być
+niezdatny. Dla $Delta = #res.deltaT$ h, czyli przedziału
 $(#res.t, #(res.t + res.deltaT))$ h:
 
 $ P_s (t, t + Delta) &= 1 - [R_s (t) - R_s (t + Delta)] \
@@ -421,43 +502,58 @@ $ P_s (t, t + Delta) &= 1 - [R_s (t) - R_s (t + Delta)] \
 
 == Oczekiwany czas zdatności systemu
 
-Każdy wyraz całkuje się osobno, $integral_0^infinity c thin e^(-r mu t) dif t = c\/(r mu)$:
+Oczekiwany czas zdatności systemu $E T_s$ to wartość oczekiwana czasu pracy
+systemu do pierwszego uszkodzenia; zgodnie z treścią zadania wyznacza się go
+jako pole pod wykresem funkcji niezawodności.
+
+Funkcja $R_s (t)$ jest skończoną sumą wykładników, więc całka sumy równa się
+sumie całek, a każda z nich jest elementarna:
+$integral_0^infinity e^(-a t) dif t = 1\/a$. Stąd
 
 #let ulamek(tm, pierwszy) = {
   let znak = if tm.coeff < 0 { $-$ } else if pierwszy { none } else { $+$ }
   let a = calc.abs(tm.coeff)
-  $#znak #a / (#tm.rate mu)$
+  $#znak #a/#tm.rate$
+}
+#let ulamki = {
+  res.terms.enumerate().map(((k, tm)) => ulamek(tm, k == 0)).join($ $)
 }
 
-// Wynik dokładny: suma ułamków, więc da się go podać jako ułamek.
-#let dokladny = {
-  let cz = res.etsExact.split("/")
-  if cz.len() == 2 { $#cz.at(0) / #cz.at(1)$ } else { $#res.etsExact$ }
-}
-
-#rownanie(
-  $E T_s = integral_0^infinity R_s (t) dif t$,
-  res.terms.enumerate().map(((k, tm)) => ulamek(tm, k == 0)),
-  $#dokladny approx #pl(res.ets) " h".$,
-  na-wiersz: 4,
-)
+$ E T_s &= integral_0^infinity R_s (t) dif t \
+        &= integral_0^infinity sum_j c_j e^(-r_j mu t) dif t \
+        &= sum_j c_j integral_0^infinity e^(-r_j mu t) dif t \
+        &= sum_j c_j / (r_j mu) = 1/mu sum_j c_j / r_j \
+        &= 10^6 lr((#math.inline(ulamki))) \
+        &= 10^6 dot #pl(res.etsSum) \
+        &approx #pl(res.ets) " h". $
 
 == Zbiór minimalnych ścieżek zdatności
+
+Podzbiór elementów systemu nazywa się *ścieżką zdatności*, jeżeli przy
+zdatności wszystkich jego elementów system jest zdatny niezależnie od stanu
+pozostałych. Ścieżka jest *minimalna*, jeżeli nie zawiera żadnej innej ścieżki
+zdatności.
 
 #let zbior(s) = $\{#s.map(str).join(", ")\}$
 #let xs(s) = s.map(i => $x_#i$).join()
 
 $ #res.paths.map(zbior).join($, $) $
 
-Minimalna formuła alternatywna:
+Minimalna formuła alternatywna --- każdemu składnikowi sumy odpowiada dokładnie
+jedna minimalna ścieżka zdatności:
 
 $ f^((#res.count))(x) = #res.paths.map(xs).join($ or $) $
 
 == Zbiór minimalnych cięć
 
+Podzbiór elementów nazywa się *cięciem*, jeżeli przy niezdatności wszystkich
+jego elementów system jest niezdatny niezależnie od stanu pozostałych. Cięcie
+jest *minimalne*, jeżeli nie zawiera żadnego innego cięcia.
+
 $ #res.cuts.map(zbior).join($, $) $
 
-Minimalna formuła koniunkcyjna:
+Minimalna formuła koniunkcyjna --- każdemu czynnikowi iloczynu odpowiada
+dokładnie jedno minimalne cięcie:
 
 $ f^((#res.count))(x) = #res.cuts.map(c => {
   if c.len() == 1 { $x_#c.at(0)$ } else { $(#c.map(i => $x_#i$).join($ or $))$ }

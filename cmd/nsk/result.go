@@ -2,6 +2,7 @@ package main
 
 import (
 	"maps"
+	"math/big"
 	"slices"
 	"strconv"
 
@@ -53,7 +54,8 @@ type Result struct {
 	RsDelta   string     `yaml:"rsDelta"`   // R_s(t+Δ)
 	Ps        string     `yaml:"ps"`        // 2b
 	Ets       string     `yaml:"ets"`       // 2c, hours
-	EtsExact  string     `yaml:"etsExact"`  // 2c, exact fraction
+	EtsSum    string     `yaml:"etsSum"`    // 2c, the dimensionless Σ c/r
+	EtsExact  string     `yaml:"etsExact"`  // 2c, exact fraction (not rendered)
 	Paths     [][]int    `yaml:"paths"`     // 2d
 	Cuts      [][]int    `yaml:"cuts"`      // 2e
 }
@@ -93,6 +95,10 @@ func compute(cfg model.Config) Result {
 	et := rs.ExpectedUptime()
 	res.Ets = et.FloatString(1)
 	res.EtsExact = et.RatString()
+	// ET = (1/μ)·Σ c/r, so the bracketed sum is ET·μ. Printing that instead of
+	// the exact fraction keeps the numbers readable: the common denominator of
+	// 153, 168, 183 … runs to eleven digits and tells the reader nothing.
+	res.EtsSum = new(big.Rat).Mul(et, big.NewRat(1, 1_000_000)).FloatString(8)
 
 	els := make([]int, n)
 	for i := range els {
