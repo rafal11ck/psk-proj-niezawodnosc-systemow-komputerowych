@@ -10,20 +10,24 @@
 // Długie sumy łamane na wiersze: lewa strona, kolejne wiersze składników,
 // na końcu wynik. Bez tego podstawienia nie mieszczą się w szerokości strony.
 #let rownanie(lewa, skladniki, wynik, na-wiersz: 3) = {
-  let wiersze = skladniki.chunks(na-wiersz).map(w => w.join($ $))
-  let linie = wiersze
-    .enumerate()
-    .map(((k, w)) => if k == 0 { $#lewa &= #w$ } else { $& #w$ })
+  let wiersze = skladniki.chunks(na-wiersz).map(w => w.join($$))
+  let linie = wiersze.enumerate().map(((k, w)) => if k == 0 { $#lewa &= #w$ } else { $& #w$ })
   linie.push($&= #wynik$)
   math.equation(block: true, linie.join($ \ $))
 }
 
-// ── Dane do strony tytułowej (uzupełnić) ────────────────────────────────────
+// ── Dane do strony tytułowej ────────────────────────────────────────────────
+// Układ strony wg szablonu z treści zadania. Numer grupy bierze się z danych
+// (`res.N`)
+#let uczelnia = "Politechnika Świętokrzyska"
+#let wydzial = "Wydział Elektrotechniki, Automatyki i Informatyki"
+#let przedmiot = "Niezawodność Systemów Komputerowych"
+#let analiza = "Analiza niezawodnościowa serwera brzegowego monitoringu przemysłowego"
+#let kierunek = "Informatyka"
+
 // Tytuł, autor i data to metadane dokumentu — trafiają też do właściwości PDF-a.
 #set document(
-  title: [
-    Projekt -- Niezawodność systemów komputerowych \
-    Analiza niezawodnościowa serwera brzegowego monitoringu przemysłowego],
+  title: analiza,
   author: (
     "inż. Rafał Grot",
     "inż. Bartłomiej Karkoszka",
@@ -31,10 +35,11 @@
   ),
   date: datetime(year: 2026, month: 10, day: 21),
 )
+#let autorzy = context document.author.join(linebreak())
 
 
 
-// ── Opis elementów (pkt 1a i 1c) — treść, nie dane obliczeniowe ──────────────
+// ── Opis elementów (pkt 1a i 1c)
 #let podzespoly = (
   "1": "Mean Well RSP-320-12 (320 W, 12 V DC)",
   "2": "Supermicro X11SDV-4C-TLN2F (Intel Xeon D-2123IT, 4 rdzenie, 60 W TDP)",
@@ -46,7 +51,7 @@
   "8": "Sunon PF80251B1-000U-A99, wentylator 80 mm",
 )
 
-// Kryterium uszkodzenia — cecha, na podstawie której stwierdza się przejście
+// Kryterium uszkodzenia cecha, na podstawie której stwierdza się przejście
 // elementu ze stanu zdatności do niezdatności.
 #let kryterium = (
   "1": "Zanik napięcia wyjściowego lub wyjście poza tolerancję 12 V ± 5 %.",
@@ -60,7 +65,7 @@
 )
 
 // Role wynikają ze struktury niezawodnościowej: elementy w jednym węźle `par`
-// pełnią funkcje alternatywne. Nic nie jest wpisywane osobno.
+// pełnią funkcje alternatywne.
 #let dzieci(n) = n.at("ser", default: n.at("par", default: ()))
 #let elementy(n) = if "el" in n { (n.el,) } else { dzieci(n).map(elementy).flatten() }
 
@@ -100,13 +105,10 @@
   }
 }
 #let krytyczne = {
-  cfg.elements
-    .filter(e => zamienniki.at(str(e.id), default: ()).len() == 0)
-    .map(e => "E" + str(e.id))
-    .join(", ")
+  cfg.elements.filter(e => zamienniki.at(str(e.id), default: ()).len() == 0).map(e => "E" + str(e.id)).join(", ")
 }
 
-// ── Ustawienia dokumentu ─────────────────────────────────────────────────────
+// Ustawienia dokumentu
 #set page(paper: "a4", margin: 2.5cm, numbering: "1")
 #set text(lang: "pl", size: 11pt)
 #set par(justify: true)
@@ -127,14 +129,37 @@
   } else { it }
 }
 
-// ── Strona tytułowa ──────────────────────────────────────────────────────────
+// Strona tytułowa
 #page(numbering: none)[
+  #set par(justify: false)
   #align(center)[
-    #v(3cm)
-    #title()
-    #v(2cm)
-    #context document.author.join(linebreak())
+    #text(size: 14pt)[#uczelnia] \
+    #text(size: 12pt)[#wydzial] \
+    #v(0.4cm)
+    #text(size: 12pt)[#przedmiot]
   ]
+
+  #v(4cm)
+  #align(center)[
+    #text(size: 16pt, weight: "bold")[Projekt] \
+    #v(0.6cm)
+    #text(size: 14pt)[#analiza]
+  ]
+
+  #v(3cm)
+  #align(right)[
+    #grid(
+      columns: (auto, auto),
+      column-gutter: 0.6em,
+      row-gutter: 0.45em,
+      align: (left, left),
+      [Wykonali:], autorzy,
+      [Kierunek:], [#kierunek],
+      [Grupa:], [#res.N],
+    )
+  ]
+
+  #v(1fr)
   #align(center)[Kielce, #context document.date.display("[year]")]
 ]
 #counter(page).update(1)
@@ -245,7 +270,28 @@ i stosuje się go do obiektów o uszkodzeniach czysto przypadkowych.
 Intensywność uszkodzeń jest wówczas niezależna od czasu,
 $lambda(t) = lambda = "const"$, co odpowiada drugiemu przedziałowi krzywej
 życia, czyli okresowi normalnej eksploatacji, w którym dominują uszkodzenia
-wywołane czynnikami losowymi. Element opisują wtedy funkcje:
+wywołane czynnikami losowymi.
+
+Stałość intensywności uszkodzeń prowadzi wprost do wykładniczej postaci funkcji
+niezawodności. Intensywność uszkodzeń jest bowiem z definicji względną
+prędkością ubywania obiektów zdatnych:
+
+$ lambda = - 1/(R(t)) dot (dif R(t))/(dif t), $
+
+co po rozdzieleniu zmiennych daje równanie różniczkowe $dif R \/ dif t =
+-lambda R(t)$ z warunkiem początkowym $R(0) = 1$ --- w chwili rozpoczęcia pracy
+element jest zdatny. Jego rozwiązaniem jest
+
+$ R(t) = e^(-lambda t). $
+
+Podstawą tej potęgi jest *stała Eulera* $e approx$ 2,718. Występuje tu nie
+przez wybór, lecz z konieczności:
+$e^x$ jest jedyną funkcją równą swojej pochodnej, więc tylko ona spełnia
+równanie, w którym prędkość ubywania obiektów zdatnych jest proporcjonalna do
+ich liczby. Wykładnik jest ujemny, zatem $R(t)$ maleje monotonicznie od
+$R(0) = 1$ do zera, tym szybciej, im większe $lambda$.
+
+Element opisują wtedy funkcje:
 
 $
   R_i (t) = e^(-lambda_i t), quad F_i (t) = 1 - e^(-lambda_i t), quad
@@ -261,6 +307,7 @@ gdzie:
   align: (right + top, left),
   [$i$], [numer elementu systemu, $i = 1, dots, #cfg.elements.len()$,],
   [$t$], [czas pracy systemu, $t >= 0$, w godzinach,],
+  [$e$], [stała Eulera, $e approx$ 2,718,],
   [$lambda_i$], [intensywność uszkodzeń elementu $i$, stała w czasie, w $1\/"h"$,],
   [$R_i (t)$],
   [funkcja niezawodności elementu $i$ --- prawdopodobieństwo, że
@@ -341,8 +388,10 @@ Czas poprawnej pracy elementów jest zgodny z rozkładem wykładniczym,
 o intensywnościach uszkodzeń zadanych w treści projektu dla numeru grupy
 projektowej $N = #res.N$ i liczby elementów $n = #res.count$:
 
-$ lambda_i = 2 N i dot 10^(-6) thin [1\/h] quad & "dla" i "nieparzystych", \
-  lambda_i = 3 N (n + 1 - i) dot 10^(-6) thin [1\/h] quad & "dla" i "parzystych". $
+$
+            lambda_i = 2 N i dot 10^(-6) thin [1\/h] quad & "dla" i "nieparzystych", \
+  lambda_i = 3 N (n + 1 - i) dot 10^(-6) thin [1\/h] quad & "dla" i "parzystych".
+$
 
 Wartości funkcji niezawodności wyznaczono dla chwili
 $t = 100 + 5 N = 100 + 5 dot #res.N = #res.t$ h.
@@ -361,17 +410,17 @@ Dla każdego elementu daje to:
     align: (center + horizon, left, left, left),
     inset: (x: 7pt, y: 5pt),
     table.header(
-      [Nr],
-      [$lambda_i thin [1\/h]$],
-      [$R_i (#res.t "h") = e^(-lambda_i t)$],
-      [$E T_i = 1\/lambda_i thin ["h"]$],
+      [Nr], [$lambda_i thin [1\/h]$], [$R_i (#res.t "h") = e^(-lambda_i t)$], [$E T_i = 1\/lambda_i thin ["h"]$]
     ),
-    ..res.elements.map(e => (
-      [E#e.id],
-      $#lam-wzor(e) dot 10^(-6) = #e.lambdaUnits dot 10^(-6)$,
-      $e^(-#e.lambdaUnits dot 10^(-6) dot #res.t) = #pl(e.R)$,
-      $1 / (#e.lambdaUnits dot 10^(-6)) = #pl(e.et)$,
-    )).flatten()
+    ..res
+      .elements
+      .map(e => (
+        [E#e.id],
+        $#lam-wzor(e) dot 10^(-6) = #e.lambdaUnits dot 10^(-6)$,
+        $e^(-#e.lambdaUnits dot 10^(-6) dot #res.t) = #pl(e.R)$,
+        $1 / (#e.lambdaUnits dot 10^(-6)) = #pl(e.et)$,
+      ))
+      .flatten(),
   ),
   caption: [Intensywności uszkodzeń i niezawodność elementów dla $N = #res.N$.],
 )
@@ -382,8 +431,10 @@ Funkcja niezawodności systemu $R_s (t)$ to prawdopodobieństwo, że system będ
 poprawnie pracował w chwili $t$. System ma strukturę szeregowo-równoległą
 (punkt @struktura), dla której
 
-$ R_s (t) = product_(r = 1)^p R^((r))(t), quad "przy czym" quad
-  R^((r))(t) = 1 - product_(i = 1)^(n_r) [1 - R_(r,i)(t)], $
+$
+  R_s (t) = product_(r = 1)^p R^((r))(t), quad "przy czym" quad
+  R^((r))(t) = 1 - product_(i = 1)^(n_r) [1 - R_(r,i)(t)],
+$
 
 gdzie:
 
@@ -426,18 +477,16 @@ struktury, wymnożeniu nawiasów i podstawieniu $R_i (t) = e^(-lambda_i t)$:
   $#znak #wsp e^(-#tm.rate mu t)$
 }
 #let wyrazy = {
-  res.terms
-    .enumerate()
-    .map(((k, tm)) => wyraz(tm, k == 0))
-    .chunks(5)
-    .map(w => w.join($ $))
+  res.terms.enumerate().map(((k, tm)) => wyraz(tm, k == 0)).chunks(5).map(w => w.join($$))
 }
 
-$ R_s (t) &= #uklady.map(czynnik-wykl).join() \
-          &= #uklady.map(czynnik-rozw).join() \
-          &= sum_j c_j e^(-r_j mu t) \
-          &= #wyrazy.at(0) \
-          &#h(1em) #wyrazy.at(1), $
+$
+  R_s (t) & = #uklady.map(czynnik-wykl).join() \
+          & = #uklady.map(czynnik-rozw).join() \
+          & = sum_j c_j e^(-r_j mu t) \
+          & = #wyrazy.at(0) \
+          & #h(1em) #wyrazy.at(1),
+$
 
 gdzie:
 
@@ -452,10 +501,17 @@ gdzie:
   [$mu$], [jednostka intensywności uszkodzeń, $mu = 10^(-6)$ $1\/h$.],
 )
 
+#let zebrane = res.terms.filter(tm => calc.abs(tm.coeff) > 1)
+#let lista(xs) = xs.map(x => [#x]).join([, ], last: [ i ])
+
 Wymnożenie nawiasów daje #res.monomials.len() jednomianów --- po jednym na każdy
 wybór gałęzi w obu podstrukturach równoległych. Wykładniki składników iloczynu
-sumują się, a jednomiany o jednakowym wykładniku zbierają się w jeden wyraz;
-wykładnik 168 występuje dwukrotnie, stąd przy nim współczynnik 2.
+sumują się, a jednomiany o jednakowym wykładniku zbierają się w jeden wyraz.
+#if zebrane.len() > 0 [
+  Wykładnik#if zebrane.len() > 1 [i] #lista(zebrane.map(tm => tm.rate))
+  #if zebrane.len() == 1 [występuje] else [występują] więcej niż raz, stąd
+  współczynnik#if zebrane.len() > 1 [i] #lista(zebrane.map(tm => tm.coeff))#[.]
+]
 
 #let iloczyn(m) = m.elements.map(i => $R_#i$).join()
 #let suma(m) = m.elements.map(i => str(res.elements.at(i - 1).lambdaUnits)).join(" + ")
@@ -465,12 +521,15 @@ wykładnik 168 występuje dwukrotnie, stąd przy nim współczynnik 2.
     columns: (auto, auto, 1fr, auto),
     align: (center, left, right, right),
     table.header[Znak][Jednomian][Suma $lambda_i dot 10^6$][Wykładnik],
-    ..res.monomials.map(m => (
-      [#if m.coeff < 0 [$-$] else [$+$]],
-      [$#iloczyn(m)$],
-      [#suma(m)],
-      [#m.rate],
-    )).flatten()
+    ..res
+      .monomials
+      .map(m => (
+        [#if m.coeff < 0 [$-$] else [$+$]],
+        [$#iloczyn(m)$],
+        [#suma(m)],
+        [#m.rate],
+      ))
+      .flatten(),
   ),
   caption: [Rozwinięcie $R_s (t)$ --- jednomiany i ich wykładniki.],
 )
@@ -497,8 +556,10 @@ w przedziale czasu $(t, t + Delta)$, przy czym w chwili $t$ mógł on już być
 niezdatny. Dla $Delta = #res.deltaT$ h, czyli przedziału
 $(#res.t, #(res.t + res.deltaT))$ h:
 
-$ P_s (t, t + Delta) &= 1 - [R_s (t) - R_s (t + Delta)] \
-  &= 1 - [#pl(res.rs) - #pl(res.rsDelta)] = #pl(res.ps). $
+$
+  P_s (t, t + Delta) & = 1 - [R_s (t) - R_s (t + Delta)] \
+                     & = 1 - [#pl(res.rs) - #pl(res.rsDelta)] = #pl(res.ps).
+$
 
 == Oczekiwany czas zdatności systemu
 
@@ -516,16 +577,19 @@ $integral_0^infinity e^(-a t) dif t = 1\/a$. Stąd
   $#znak #a/#tm.rate$
 }
 #let ulamki = {
-  res.terms.enumerate().map(((k, tm)) => ulamek(tm, k == 0)).join($ $)
+  res.terms.enumerate().map(((k, tm)) => ulamek(tm, k == 0)).join($$)
 }
 
-$ E T_s &= integral_0^infinity R_s (t) dif t \
-        &= integral_0^infinity sum_j c_j e^(-r_j mu t) dif t \
-        &= sum_j c_j integral_0^infinity e^(-r_j mu t) dif t \
-        &= sum_j c_j / (r_j mu) = 1/mu sum_j c_j / r_j \
-        &= 10^6 lr((#math.inline(ulamki))) \
-        &= 10^6 dot #pl(res.etsSum) \
-        &approx #pl(res.ets) " h". $
+$
+  E T_s & = integral_0^infinity R_s (t) dif t \
+        & = integral_0^infinity sum_j c_j e^(-r_j mu t) dif t \
+        & = sum_j c_j integral_0^infinity e^(-r_j mu t) dif t \
+        & = sum_j c_j / (r_j mu) = 1/mu sum_j c_j / r_j, quad
+            1/mu = 1/10^(-6) = 10^6 thin "h" \
+        & = 10^6 dot lr((#math.inline(ulamki))) \
+        & = 10^6 dot #pl(res.etsSum) \
+        & approx #pl(res.ets) thin "h".
+$
 
 == Zbiór minimalnych ścieżek zdatności
 
@@ -537,7 +601,7 @@ zdatności.
 #let zbior(s) = $\{#s.map(str).join(", ")\}$
 #let xs(s) = s.map(i => $x_#i$).join()
 
-$ #res.paths.map(zbior).join($, $) $
+$ #res.paths.map(zbior).join($,$) $
 
 Minimalna formuła alternatywna --- każdemu składnikowi sumy odpowiada dokładnie
 jedna minimalna ścieżka zdatności:
@@ -550,11 +614,13 @@ Podzbiór elementów nazywa się *cięciem*, jeżeli przy niezdatności wszystki
 jego elementów system jest niezdatny niezależnie od stanu pozostałych. Cięcie
 jest *minimalne*, jeżeli nie zawiera żadnego innego cięcia.
 
-$ #res.cuts.map(zbior).join($, $) $
+$ #res.cuts.map(zbior).join($,$) $
 
 Minimalna formuła koniunkcyjna --- każdemu czynnikowi iloczynu odpowiada
 dokładnie jedno minimalne cięcie:
 
-$ f^((#res.count))(x) = #res.cuts.map(c => {
-  if c.len() == 1 { $x_#c.at(0)$ } else { $(#c.map(i => $x_#i$).join($ or $))$ }
-}).join($ and $) $
+$
+  f^((#res.count))(x) = #res.cuts.map(c => {
+    if c.len() == 1 { $x_#c.at(0)$ } else { $(#c.map(i => $x_#i$).join($ or $))$ }
+  }).join($ and $)
+$

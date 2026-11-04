@@ -1,6 +1,6 @@
 # Dane wejściowe projektu. Z tego pliku lecą tabele i schemat w raporcie.
 
-N: 3 # UZUPEŁNIĆ — numer studenckiej grupy projektowej; od punktu 2 wchodzi do λ i t
+N: 3 # numer studenckiej grupy projektowej; od punktu 2 wchodzi do λ i t
 
 # Elementy nieodnawialne. Liczba elementów n wynika z długości tej listy.
 elements:
