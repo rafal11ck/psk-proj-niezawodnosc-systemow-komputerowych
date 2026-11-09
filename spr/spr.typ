@@ -284,12 +284,7 @@ element jest zdatny. Jego rozwiązaniem jest
 
 $ R(t) = e^(-lambda t). $
 
-Podstawą tej potęgi jest *stała Eulera* $e approx$ 2,718. Występuje tu nie
-przez wybór, lecz z konieczności:
-$e^x$ jest jedyną funkcją równą swojej pochodnej, więc tylko ona spełnia
-równanie, w którym prędkość ubywania obiektów zdatnych jest proporcjonalna do
-ich liczby. Wykładnik jest ujemny, zatem $R(t)$ maleje monotonicznie od
-$R(0) = 1$ do zera, tym szybciej, im większe $lambda$.
+Podstawą potęgi jest stała Eulera $e approx$ 2,718.
 
 Element opisują wtedy funkcje:
 
@@ -585,7 +580,7 @@ $
         & = integral_0^infinity sum_j c_j e^(-r_j mu t) dif t \
         & = sum_j c_j integral_0^infinity e^(-r_j mu t) dif t \
         & = sum_j c_j / (r_j mu) = 1/mu sum_j c_j / r_j, quad
-            1/mu = 1/10^(-6) = 10^6 thin "h" \
+          1/mu = 1/10^(-6) = 10^6 thin "h" \
         & = 10^6 dot lr((#math.inline(ulamki))) \
         & = 10^6 dot #pl(res.etsSum) \
         & approx #pl(res.ets) thin "h".
