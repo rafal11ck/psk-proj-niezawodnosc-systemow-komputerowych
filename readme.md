@@ -42,4 +42,5 @@ całkowania numerycznego nie ma. Jedyne zaokrąglenie w całym rachunku to
 - [x] 2c $ET_s$
 - [x] 2d minimalne ścieżki zdatności
 - [x] 2e minimalne cięcia
-- [ ] 3–5 redundancja, warianty rezerwowania, wnioski
+- [x] 3a–3e redundancja E1 (E9), $R_r$, $P_r$, $ET_r$, wskaźniki $N$, $t^*$ i wykres
+- [ ] 4–5 kolejne warianty rezerwowania, wnioski

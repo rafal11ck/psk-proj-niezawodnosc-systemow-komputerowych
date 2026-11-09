@@ -1,4 +1,5 @@
 #import "@preview/diagraph:0.3.8"
+#import "@preview/lilaq:0.6.0" as lq
 #import "rbd.typ": rbd
 
 #let cfg = yaml("/system.yaml")
@@ -229,14 +230,13 @@ z zasilacza oraz magistrale, którymi płyta główna komunikuje się z pozosta�
 podzespołami.
 
 #let etykieta(e) = "E" + str(e.id) + "\n" + e.name
-#let dot-src = (
+#let dot-of(elementy, polaczenia) = (
   "digraph {\n"
     + "  rankdir=LR; splines=ortho; nodesep=0.35; ranksep=0.7;\n"
     + "  node [shape=box, style=rounded, fontsize=10, width=1.5, height=0.6];\n"
     + "  edge [fontsize=9];\n"
-    + cfg.elements.map(e => "  " + str(e.id) + " [label=\"" + etykieta(e) + "\"];\n").join("")
-    + cfg
-      .links
+    + elementy.map(e => "  " + str(e.id) + " [label=\"" + etykieta(e) + "\"];\n").join("")
+    + polaczenia
       .map(l => (
         "  " + str(l.from) + " -> " + str(l.to) + " [label=\"" + l.label + "\"];\n"
       ))
@@ -245,7 +245,7 @@ podzespołami.
 )
 
 #figure(
-  diagraph.render(dot-src, width: 100%),
+  diagraph.render(dot-of(cfg.elements, cfg.links), width: 100%),
   caption: [Schemat funkcjonalny systemu — połączenia elementów.],
 )
 
@@ -619,3 +619,141 @@ $
     if c.len() == 1 { $x_#c.at(0)$ } else { $(#c.map(i => $x_#i$).join($ or $))$ }
   }).join($ and $)
 $
+
+#let red = res.redundancy
+#let el-dup-r = res.elements.find(e => e.id == red.dupId)
+
+= Zdublować pierwszy element --- dodać element rezerwowy (E#red.spareId) o intensywności $lambda_#red.spareId = lambda_#red.dupId$ i umieścić go jako redundancję pierwszego elementu systemu
+
+Element E#red.dupId (#red.dupName) jest elementem szeregowym struktury, więc
+jego uszkodzenie samo w sobie unieruchamia system (cięcie jednoelementowe
+$\{#red.dupId\}$). Do systemu dodaje się element rezerwowy E#red.spareId ---
+identyczny egzemplarz E#red.dupId o tej samej intensywności uszkodzeń
+$lambda_#red.spareId = lambda_#red.dupId = #el-dup-r.lambda thin "1/h"$ i tej
+samej niezawodności $R_#red.spareId (t) = R_#red.dupId (t)$ --- połączony z
+E#red.dupId równolegle. Jest to *rezerwa obciążona*: element rezerwowy jest
+obciążony w takim samym stopniu jak podstawowy (ta sama intensywność uszkodzeń)
+i gotowy do natychmiastowego przejęcia pracy, więc oba elementy starzeją się od
+chwili $t = 0$. Do zasilania systemu wystarcza wówczas dowolny z dwóch
+elementów, a system traci zasilanie dopiero przy uszkodzeniu obu.
+
+== Schemat funkcjonalny systemu z redundancją
+
+Element rezerwowy E#red.spareId zasila te same odbiorniki co E#red.dupId
+(tory #red.links.filter(l => l.from == red.spareId).map(l => "E" + str(l.to)).join(", ", last: " i ")),
+pracując równolegle do niego.
+
+#figure(
+  diagraph.render(dot-of(red.elements, red.links), width: 100%),
+  caption: [Schemat funkcjonalny systemu z redundancją zasilania (E#red.spareId).],
+)
+
+== Struktura niezawodnościowa systemu z redundancją
+
+W strukturze niezawodnościowej pojedynczy blok E#red.dupId zostaje zastąpiony
+podstrukturą równoległą E#red.dupId $parallel$ E#red.spareId. Pozostała część
+struktury nie zmienia się.
+
+#figure(
+  rbd(red.structure, i => text(size: 10pt)[E#i]),
+  caption: [Struktura niezawodnościowa systemu z redundancją.],
+)
+
+== Wyznaczenie $R_r (t)$, $P_r (t, t + Delta)$ oraz $E T_r$
+
+Ponieważ E#red.dupId wchodzi do $R_s (t)$ jako czynnik szeregowy
+$R_#red.dupId$, dołączenie równoległego elementu rezerwowego o tej samej
+niezawodności zastępuje ten czynnik niezawodnością pary równoległej
+
+$
+  R_(#red.dupId parallel #red.spareId)(t) = 1 - (1 - R_#red.dupId)^2 = 2 R_#red.dupId - R_#red.dupId^2 = R_#red.dupId (2 - R_#red.dupId),
+$
+
+skąd niezawodność całego systemu z redundancją
+
+$ R_r (t) = (2 - R_#red.dupId (t)) dot R_s (t) = 2 R_s (t) - R_#red.dupId (t) R_s (t). $
+
+Mnożenie przez $R_#red.dupId (t) = e^(-lambda_#red.dupId t) = e^(-#red.dupUnits mu t)$
+przesuwa wykładnik każdego składnika $R_s (t)$ o #red.dupUnits jednostek $mu$,
+więc $R_r (t)$ pozostaje skończoną sumą wykładników o całkowitych
+współczynnikach ($#red.terms.len()$ wyrazów). Po podstawieniu $t = #res.t$ h:
+
+#rownanie(
+  $R_r (#res.t "h")$,
+  red.terms.enumerate().map(((k, tm)) => czlon(tm, k == 0)),
+  $#pl(red.rr).$,
+)
+
+Prawdopodobieństwo braku uszkodzenia w przedziale
+$(#res.t, #(res.t + res.deltaT))$ h liczy się tak samo jak w punkcie 2b):
+
+$
+  P_r (t, t + Delta) & = 1 - [R_r (t) - R_r (t + Delta)] \
+                     & = 1 - [#pl(red.rr) - #pl(red.rrDelta)] = #pl(red.pr).
+$
+
+Oczekiwany czas zdatności --- całka z $R_r (t)$, znów jako suma całek
+elementarnych $integral_0^infinity e^(-a t) dif t = 1\/a$:
+
+$
+  E T_r & = integral_0^infinity R_r (t) dif t = sum_k d_k / (s_k mu) = 10^6 dot #pl(red.etrSum) \
+        & approx #pl(red.etr) thin "h",
+$
+
+gdzie $d_k$ i $s_k$ to współczynniki i wykładniki (w krotnościach $mu$)
+wyrazów $R_r (t)$.
+
+== Korzyść z redundancji --- wskaźniki $N$
+
+Korzyść z wprowadzenia rezerwy wyraża *miara redundancji strukturalnej*
+(zysk z rezerwowania) --- stosunek rozważanego wskaźnika niezawodności dla
+systemu z elementami nadmiarowymi do tego samego wskaźnika dla systemu
+wyjściowego. Dla chwili $t = #res.t$ h oraz dla $t = 0$:
+
+#figure(
+  table(
+    columns: (auto, auto, auto),
+    align: (left, center, right),
+    inset: (x: 8pt, y: 5pt),
+    table.header[Wskaźnik][Definicja][Wartość],
+    [$N_(R(t))$], $R_r (t) \/ R_s (t)$, [#pl(red.nrT)],
+    [$N_(R(0))$], $R_r (0) \/ R_s (0)$, [#pl(red.nr0)],
+    [$N_(P(t, t+Delta))$], $P_r (t, t+Delta) \/ P_s (t, t+Delta)$, [#pl(red.npT)],
+    [$N_(E T)$], $E T_r \/ E T_s$, [#pl(red.net)],
+  ),
+  caption: [Wskaźniki korzyści z redundancji elementu E#red.dupId.],
+)
+
+W chwili $t = 0$ oba systemy są na pewno zdatne ($R_s (0) = R_r (0) = 1$), więc
+$N_(R(0)) = 1$ --- redundancja nie daje jeszcze żadnej korzyści. Dla $t = #res.t$ h
+wszystkie wskaźniki są większe od 1, co potwierdza wzrost niezawodności;
+największy jest przyrost oczekiwanego czasu zdatności
+($N_(E T) = #pl(red.net)$, tj. o #pl(str(calc.round((float(red.net) - 1) * 100, digits: 1))) %).
+
+== Chwila $t^*$ maksymalnej korzyści $N_(R(t))$
+
+Dla elementu szeregowego wskaźnik upraszcza się do
+
+$ N_(R(t)) = R_r (t) / R_s (t) = (2 - R_#red.dupId (t)) R_s (t) / R_s (t) = 2 - e^(-lambda_#red.dupId t), $
+
+a więc jest *funkcją rosnącą* $t$: rośnie od $N_(R(0)) = 1$ do $2$ przy
+$t -> infinity$. W przedziale $[0, #red.horizon]$ h maksimum przypada zatem na
+prawym jego końcu:
+
+$ t^* = #red.horizon thin "h", quad max N_(R(t)) = 2 - e^(-lambda_#red.dupId t^*) = #pl(red.maxNr). $
+
+#let px = red.plot.map(p => p.t)
+#let py = red.plot.map(p => p.nr)
+
+#figure(
+  lq.diagram(
+    width: 12cm,
+    height: 6.5cm,
+    xlabel: $t thin ["h"]$,
+    ylabel: $N_(R(t))$,
+    lq.plot(px, py, mark: none),
+    lq.vlines(red.tStar, stroke: (paint: gray, dash: "dashed")),
+    lq.scatter((red.tStar,), (py.last(),), color: maroon, size: 6pt),
+  ),
+  caption: [Przebieg $N_(R(t))$ w przedziale $[0, #red.horizon]$ h; zaznaczono $t^*$ oraz $max N_(R(t)) = #pl(red.maxNr)$.],
+)

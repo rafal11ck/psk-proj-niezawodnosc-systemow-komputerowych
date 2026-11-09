@@ -56,6 +56,30 @@ func (n Node) Walk(fn func(Node)) {
 	}
 }
 
+// Duplicate returns a copy of the tree with element `id` replaced by a parallel
+// pair {id, spare} — the reliability structure after adding a redundant spare
+// (point 3). The rest of the tree is unchanged.
+func (n Node) Duplicate(id, spare int) Node {
+	switch {
+	case n.El == id:
+		return Node{Par: []Node{{El: id}, {El: spare}}}
+	case n.El != 0:
+		return n
+	case len(n.Ser) > 0:
+		out := make([]Node, len(n.Ser))
+		for i, c := range n.Ser {
+			out[i] = c.Duplicate(id, spare)
+		}
+		return Node{Ser: out}
+	default:
+		out := make([]Node, len(n.Par))
+		for i, c := range n.Par {
+			out[i] = c.Duplicate(id, spare)
+		}
+		return Node{Par: out}
+	}
+}
+
 // filled counts how many of the three variants the node sets.
 func (n Node) filled() int {
 	c := 0
