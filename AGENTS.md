@@ -21,7 +21,7 @@ obciążona” (ta wymaga przełącznika, slajdy 85–86).
 ## Przepływ
 
 ```
-system.yaml ─► Go (cmd/nsk, internal/) ─► out/results.yaml ─► spr/spr.typ ─► spr.pdf
+system.yaml ─► Go (cmd/nsk, internal/) ─► out/results.yaml ─► spr.typ ─► spr.pdf
 ```
 
 ```sh
@@ -29,9 +29,10 @@ task        # calc + build
 task calc   # system.yaml -> out/results.yaml
 task build  # spr.pdf
 task test   # go test ./...
+task fmt    # typstyle -i spr.typ rbd.typ, gofmt -w .
 ```
 
-- Wszystko liczy Go. `spr/spr.typ` tylko wczytuje `out/results.yaml` i wyświetla
+- Wszystko liczy Go. `spr.typ` tylko wczytuje `out/results.yaml` i wyświetla
   wyniki. W Typst nie liczyć i nie wpisywać na sztywno liczb, numerów elementów,
   wzorów działających tylko dla jednego przypadku ani przedziałów.
 - Stałe z treści zadania ($t = 100 + 5N$, $\Delta$, przedział $[0, 100\,000]$ h)
@@ -69,7 +70,11 @@ nix-shell -p poppler-utils --run 'pdftotext -layout spr.pdf - ; pdftoppm -r 60 -
 
 - Bez komentarzy opisujących, co robi kod. Komentarz tylko dla nieoczywistego
   „dlaczego”.
-- Przed oddaniem: `gofmt -l .` (pusto), `go vet ./...`, `task test`, `task`.
+- Po każdej zmianie w `.typ` albo `.go` uruchomić `task fmt`. Typst formatuje
+  `typstyle` (ten sam, którego używa Tinymist w VS Code), a Go formatuje `gofmt`.
+  Nie formatować ręcznie pod siebie, bo przy następnym `task fmt` i tak się zmieni.
+- Przed oddaniem: `task fmt`, `typstyle --check spr.typ rbd.typ`, `go vet ./...`,
+  `task test`, `task`.
 
 ## Git
 

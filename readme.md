@@ -1,56 +1,56 @@
-# Niezawodność Systemów Komputerowych — projekt
+# Projekt z Niezawodności Systemów Komputerowych
 
 Analiza niezawodnościowa serwera brzegowego monitoringu przemysłowego.
+Sprawozdanie jest w Typst, a obliczenia robi program w Go.
+
+## Jak zbudować
 
 ```sh
 task        # przelicza dane i składa spr.pdf
-task calc   # system.yaml -> out/results.yaml
+task calc   # tylko obliczenia: system.yaml -> out/results.yaml
+task build  # tylko PDF
+task watch  # przebudowuje PDF przy każdej zmianie
 task test   # testy
-task watch  # przebudowuje raport na bieżąco
 ```
 
+Potrzebne są Go, Typst i Task.
+
+## Jak to działa
+
 ```
-system.yaml  ──►  src/ (Go)  ──►  out/results.yaml  ──►  spr/spr.typ  ──►  spr.pdf
+system.yaml  ->  program w Go  ->  out/results.yaml  ->  spr.typ  ->  spr.pdf
 ```
 
-| ścieżka | rola |
+W `system.yaml` są dane systemu: numer grupy `N`, elementy, połączenia,
+struktura niezawodnościowa i warianty rezerwowania. Program w Go liczy z nich
+wszystko, co potrzebne do sprawozdania, i zapisuje wynik do `out/results.yaml`.
+Typst tylko wczytuje ten plik i składa PDF. W sprawozdaniu nie ma liczb ani
+numerów elementów wpisanych ręcznie, więc po zmianie danych wystarczy
+uruchomić `task`.
+
+| plik | co zawiera |
 |---|---|
-| `system.yaml` | dane: `N`, elementy, połączenia, struktura niezawodnościowa, warianty rezerwowania |
-| `cmd/nsk/` | program: wczytanie, złożenie wyniku |
-| `internal/model/` | typy danych i ich walidacja |
-| `internal/reliability/` | $\lambda_i$, $R_s(t)$, ścieżki i cięcia |
-| `spr/spr.typ` | treść raportu |
-| `spr/rbd.typ` | rysowanie schematu struktury niezawodnościowej (CeTZ) |
-
-Żadna liczba ani etykieta w raporcie nie jest wpisana ręcznie. Ze struktury
-wyprowadzane są: schemat, podział na elementy krytyczne i alternatywne,
-postać wykładnicza $R_s(t)$ oraz ścieżki i cięcia minimalne.
+| `system.yaml` | dane wejściowe |
+| `cmd/nsk/` | program: wczytuje dane i zapisuje wyniki |
+| `internal/model/` | typy danych i sprawdzanie poprawności `system.yaml` |
+| `internal/reliability/` | $\lambda_i$, $R(t)$, $ET$, ścieżki i cięcia |
+| `spr.typ` | treść sprawozdania |
+| `rbd.typ` | rysowanie struktury niezawodnościowej |
 
 ## Dokładność
 
-Intensywności $\lambda_i$ to całkowite krotności $10^{-6}$ 1/h, a współczynniki
-i wykładniki postaci wykładniczej $R_s(t)=\sum c_j e^{-r_j \mu t}$ są całkowite.
-$ET_s$ liczone jest jako suma ułamków na `big.Rat`, więc **dokładnie** —
-całkowania numerycznego nie ma. Jedyne zaokrąglenie w całym rachunku to
-`math.Exp` przy drukowaniu $R_s$ i $P_s$.
+Intensywności uszkodzeń są całkowitymi krotnościami $10^{-6}$ 1/h, więc
+$R(t)$ po rozwinięciu to suma wyrazów $c_j e^{-r_j \mu t}$ z całkowitymi $c_j$
+i $r_j$. Dzięki temu $ET$ liczy się dokładnie, jako suma ułamków $c_j / r_j$,
+bez całkowania numerycznego. Zaokrąglenie pojawia się tylko przy liczeniu
+wartości $e^x$.
 
 ## Kolejny wariant rezerwowania
 
-1. W `system.yaml` dopisać wariant do `redundancy`, np. `- dup: [2]` albo
-   `- dup: [1, 2]`. Każdy wymieniony element dostaje równoległą rezerwę
-   obciążoną o tej samej $\lambda$.
-2. `task calc`.
-3. W `spr/spr.typ` dodać punkt: nagłówek, opis i
-   `#wariant(res.variants.at(1))` (indeks jak w `redundancy`).
-   Opcjonalnie `schemat: [...]` i `struktura: [...]` z tekstem nad rysunkami.
-
-## Stan
-
-- [x] 1a–1d opis systemu, schemat funkcjonalny, opis niezawodnościowy, struktura
-- [x] 2a $R_s(t)$ w postaci wykładniczej
-- [x] 2b $P_s(t, t+\Delta)$
-- [x] 2c $ET_s$
-- [x] 2d minimalne ścieżki zdatności
-- [x] 2e minimalne cięcia
-- [x] 3a–3e redundancja E1 (E9), $R_r$, $P_r$, $ET_r$, wskaźniki $N$, $t^*$ i wykres
-- [ ] 4–5 kolejne warianty rezerwowania, wnioski
+1. Dopisać wariant w `system.yaml` pod `redundancy`, np. `- dup: [2]`.
+   Wybrany element dostaje równolegle drugi taki sam, a program sam nadaje mu
+   kolejny numer (9, 10, 11 …).
+2. Uruchomić `task calc`.
+3. W `spr.typ` dodać punkt z nagłówkiem, krótkim opisem i
+   `#wariant(res.variants.at(1))`, gdzie indeks to pozycja wariantu w
+   `redundancy` liczona od zera.

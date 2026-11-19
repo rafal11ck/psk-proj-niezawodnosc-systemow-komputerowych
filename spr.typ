@@ -3,8 +3,8 @@
 #import "@preview/zero:0.6.1"
 #import "rbd.typ": rbd
 
-#let cfg = yaml("/system.yaml")
-#let res = yaml("/out/results.yaml")
+#let cfg = yaml("system.yaml")
+#let res = yaml("out/results.yaml")
 
 // Polski separator dziesiętny; liczby formatuje program.
 #let pl(x) = str(x).replace(".", ",")
@@ -15,7 +15,9 @@
 // na końcu wynik. Bez tego podstawienia nie mieszczą się w szerokości strony.
 #let rownanie(lewa, skladniki, wynik, na-wiersz: 3) = {
   let wiersze = skladniki.chunks(na-wiersz).map(w => w.join($$))
-  let linie = wiersze.enumerate().map(((k, w)) => if k == 0 { $#lewa &= #w$ } else { $& #w$ })
+  let linie = wiersze
+    .enumerate()
+    .map(((k, w)) => if k == 0 { $#lewa &= #w$ } else { $& #w$ })
   linie.push($&= #wynik$)
   math.equation(block: true, linie.join($ \ $))
 }
@@ -71,7 +73,9 @@
 // Role wynikają ze struktury niezawodnościowej: elementy w jednym węźle `par`
 // pełnią funkcje alternatywne.
 #let dzieci(n) = n.at("ser", default: n.at("par", default: ()))
-#let elementy(n) = if "el" in n { (n.el,) } else { dzieci(n).map(elementy).flatten() }
+#let elementy(n) = if "el" in n { (n.el,) } else {
+  dzieci(n).map(elementy).flatten()
+}
 
 // Dla każdego elementu: lista elementów zamiennych (pusta, gdy krytyczny).
 #let zamienniki-z(n) = {
@@ -79,7 +83,11 @@
   if "par" in n {
     let grupy = n.par.map(elementy)
     for (k, g) in grupy.enumerate() {
-      let inne = grupy.enumerate().filter(p => p.at(0) != k).map(p => p.at(1)).flatten()
+      let inne = grupy
+        .enumerate()
+        .filter(p => p.at(0) != k)
+        .map(p => p.at(1))
+        .flatten()
       for e in g { out.insert(str(e), inne) }
     }
   }
@@ -99,7 +107,9 @@
 }
 #let rownolegle = {
   let g = grupy-z(cfg.structure).map(p => p.map(i => "E" + str(i)).join("/"))
-  if g.len() < 2 { g.join("") } else { g.slice(0, -1).join(", ") + " oraz " + g.last() }
+  if g.len() < 2 { g.join("") } else {
+    g.slice(0, -1).join(", ") + " oraz " + g.last()
+  }
 }
 
 #let rola(e) = {
@@ -109,7 +119,11 @@
   }
 }
 #let krytyczne = {
-  cfg.elements.filter(e => zamienniki.at(str(e.id), default: ()).len() == 0).map(e => "E" + str(e.id)).join(", ")
+  cfg
+    .elements
+    .filter(e => zamienniki.at(str(e.id), default: ()).len() == 0)
+    .map(e => "E" + str(e.id))
+    .join(", ")
 }
 
 // Ustawienia dokumentu
@@ -119,7 +133,9 @@
 // Numeracja jak w treści zadania: punkty 1., 2., ... i podpunkty a), b), c).
 #set heading(numbering: (..n) => {
   let poziom = n.pos()
-  if poziom.len() == 1 { numbering("1.", poziom.last()) } else if poziom.len() == 2 { numbering("a)", poziom.last()) }
+  if poziom.len() == 1 { numbering("1.", poziom.last()) } else if (
+    poziom.len() == 2
+  ) { numbering("a)", poziom.last()) }
 })
 #show table.cell.where(y: 0): strong
 
@@ -238,10 +254,18 @@ podzespołami.
     + "  rankdir=LR; splines=ortho; nodesep=0.35; ranksep=0.7;\n"
     + "  node [shape=box, style=rounded, fontsize=10, width=1.5, height=0.6];\n"
     + "  edge [fontsize=9];\n"
-    + elementy.map(e => "  " + str(e.id) + " [label=\"" + etykieta(e) + "\"];\n").join("")
+    + elementy
+      .map(e => "  " + str(e.id) + " [label=\"" + etykieta(e) + "\"];\n")
+      .join("")
     + polaczenia
       .map(l => (
-        "  " + str(l.from) + " -> " + str(l.to) + " [label=\"" + l.label + "\"];\n"
+        "  "
+          + str(l.from)
+          + " -> "
+          + str(l.to)
+          + " [label=\""
+          + l.label
+          + "\"];\n"
       ))
       .join("")
     + "}"
@@ -306,7 +330,9 @@ gdzie:
   [$i$], [numer elementu systemu, $i = 1, dots, #cfg.elements.len()$,],
   [$t$], [czas pracy systemu, $t >= 0$, w godzinach,],
   [$e$], [stała Eulera, $e approx$ 2,718,],
-  [$lambda_i$], [intensywność uszkodzeń elementu $i$, stała w czasie, w $1\/"h"$,],
+  [$lambda_i$],
+  [intensywność uszkodzeń elementu $i$, stała w czasie, w $1\/"h"$,],
+
   [$R_i (t)$],
   [funkcja niezawodności elementu $i$, czyli prawdopodobieństwo, że
     element nie ulegnie uszkodzeniu do chwili $t$,],
@@ -336,10 +362,17 @@ Uszkodzenia elementów rozpatrywanego systemu sklasyfikowano następująco.
     [katastroficzne],
     [uszkodzenie powoduje całkowitą utratę zdolności do poprawnej pracy],
 
-    [Związek z innymi uszkodzeniami], [niezależne], [uszkodzenie elementu nie wywołuje uszkodzeń pozostałych],
+    [Związek z innymi uszkodzeniami],
+    [niezależne],
+    [uszkodzenie elementu nie wywołuje uszkodzeń pozostałych],
 
-    [Charakter procesu pojawienia się], [nagłe], [stała intensywność uszkodzeń wyklucza dominację procesów zużyciowych],
-    [Czas występowania], [stałe], [elementy są nieodnawialne, więc stan niezdatności jest trwały],
+    [Charakter procesu pojawienia się],
+    [nagłe],
+    [stała intensywność uszkodzeń wyklucza dominację procesów zużyciowych],
+
+    [Czas występowania],
+    [stałe],
+    [elementy są nieodnawialne, więc stan niezdatności jest trwały],
   ),
   caption: [Klasyfikacja uszkodzeń elementów systemu.],
 )
@@ -387,7 +420,7 @@ o intensywnościach uszkodzeń zadanych w treści projektu dla numeru grupy
 projektowej $N = #res.N$:
 
 $
-            lambda_i = 2 N i dot 10^(-6) thin [1\/h] quad & "dla" i "nieparzystych", \
+  lambda_i = 2 N i dot 10^(-6) thin [1\/h] quad & "dla" i "nieparzystych", \
   lambda_i = 3 N (#(res.count + 1) - i) dot 10^(-6) thin [1\/h] quad & "dla" i "parzystych".
 $
 
@@ -408,7 +441,10 @@ Dla każdego elementu daje to:
     align: (center + horizon, left, left, left),
     inset: (x: 7pt, y: 5pt),
     table.header(
-      [Nr], [$lambda_i thin [1\/h]$], [$R_i (#res.t "h") = e^(-lambda_i t)$], [$E T_i = 1\/lambda_i thin ["h"]$]
+      [Nr],
+      [$lambda_i thin [1\/h]$],
+      [$R_i (#res.t "h") = e^(-lambda_i t)$],
+      [$E T_i = 1\/lambda_i thin ["h"]$],
     ),
     ..res
       .elements
@@ -444,7 +480,8 @@ gdzie:
   [$p$], [liczba układów połączonych szeregowo,],
   [$n_r$], [liczba części składowych $r$-tego układu, połączonych równolegle,],
   [$R^((r))(t)$], [funkcja niezawodności $r$-tego układu,],
-  [$R_(r,i)(t)$], [funkcja niezawodności $i$-tej części składowej $r$-tego układu.],
+  [$R_(r,i)(t)$],
+  [funkcja niezawodności $i$-tej części składowej $r$-tego układu.],
 )
 
 #let uklady = cfg.structure.ser
@@ -475,7 +512,12 @@ struktury, wymnożeniu nawiasów i podstawieniu $R_i (t) = e^(-lambda_i t)$:
   $#znak #wsp e^(-#tm.rate mu t)$
 }
 #let wyrazy = {
-  res.terms.enumerate().map(((k, tm)) => wyraz(tm, k == 0)).chunks(5).map(w => w.join($$))
+  res
+    .terms
+    .enumerate()
+    .map(((k, tm)) => wyraz(tm, k == 0))
+    .chunks(5)
+    .map(w => w.join($$))
 }
 
 $
@@ -512,7 +554,9 @@ sumują się, a jednomiany o jednakowym wykładniku zbierają się w jeden wyraz
 ]
 
 #let iloczyn(m) = m.elements.map(i => $R_#i$).join()
-#let suma(m) = m.elements.map(i => str(res.elements.at(i - 1).lambdaUnits)).join(" + ")
+#let suma(m) = (
+  m.elements.map(i => str(res.elements.at(i - 1).lambdaUnits)).join(" + ")
+)
 
 #figure(
   table(
@@ -623,18 +667,30 @@ $
   }).join($ and $)
 $
 
-#let mala(s) = { let c = s.clusters(); lower(c.first()) + c.slice(1).join() }
-#let odbiorniki(v, zap) = v.links.filter(l => l.from == zap.id).map(l => {
-  mala(v.elements.find(e => e.id == l.to).name) + " (E" + str(l.to) + ")"
-})
+#let mala(s) = {
+  let c = s.clusters()
+  lower(c.first()) + c.slice(1).join()
+}
+#let odbiorniki(v, zap) = (
+  v
+    .links
+    .filter(l => l.from == zap.id)
+    .map(l => {
+      mala(v.elements.find(e => e.id == l.to).name) + " (E" + str(l.to) + ")"
+    })
+)
 
 #let para-r(zap) = $R_(#zap.of parallel #zap.id)$
-#let zapas(n, v) = if "par" in n and n.par.len() == 2 and n.par.all(c => "el" in c) {
+#let zapas(n, v) = if (
+  "par" in n and n.par.len() == 2 and n.par.all(c => "el" in c)
+) {
   v.spares.find(zap => zap.of == n.par.at(0).el and zap.id == n.par.at(1).el)
 }
 #let blok(n, v, para) = {
   let zap = zapas(n, v)
-  if zap != none { para(zap) } else if "el" in n { $R_#n.el$ } else if "ser" in n {
+  if zap != none { para(zap) } else if "el" in n { $R_#n.el$ } else if (
+    "ser" in n
+  ) {
     n.ser.map(c => blok(c, v, para)).join()
   } else if n.par.len() == 2 {
     let (a, b) = n.par.map(c => blok(c, v, para))
@@ -648,7 +704,9 @@ $
   let jeden = v.spares.len() == 1
   let dwa(t) = v.spares.map(zap => $(2 - R_#zap.of #t)$).join()
   let wyk(zap, t) = $2 - e^(-lambda_#zap.of #t)$
-  let n-wzor(t) = if jeden { wyk(v.spares.first(), t) } else { v.spares.map(zap => $(#wyk(zap, t))$).join() }
+  let n-wzor(t) = if jeden { wyk(v.spares.first(), t) } else {
+    v.spares.map(zap => $(#wyk(zap, t))$).join()
+  }
   let rozw = if jeden { $= 2 R_s (t) - R_#v.spares.first().of (t) R_s (t)$ }
 
   [
@@ -677,7 +735,7 @@ $
     #for zap in v.spares [
       $
         #para-r(zap) (t) & = 1 - (1 - R_#zap.of)^2 = 1 - (1 - 2 R_#zap.of + R_#zap.of^2) \
-                        & = 2 R_#zap.of - R_#zap.of^2 = R_#zap.of (2 - R_#zap.of).
+        & = 2 R_#zap.of - R_#zap.of^2 = R_#zap.of (2 - R_#zap.of).
       $
     ]
 
@@ -719,8 +777,8 @@ $
 
     $
       E T_r = integral_0^infinity R_r (t) dif t
-            = integral_0^infinity sum_j c_j e^(-r_j mu t) dif t
-            = 1/mu sum_j c_j / r_j,
+      = integral_0^infinity sum_j c_j e^(-r_j mu t) dif t
+      = 1/mu sum_j c_j / r_j,
     $
 
     #rownanie(
@@ -744,7 +802,10 @@ $
         table.header[Wskaźnik][Definicja][Wartość],
         [$N_(R(t))$], $R_r (t) \/ R_s (t)$, [#pl(v.nrT)],
         [$N_(R(0))$], $R_r (0) \/ R_s (0)$, [#pl(v.nr0)],
-        [$N_(P(t, t+Delta))$], $P_r (t, t+Delta) \/ P_s (t, t+Delta)$, [#pl(v.npT)],
+        [$N_(P(t, t+Delta))$],
+        $P_r (t, t+Delta) \/ P_s (t, t+Delta)$,
+        [#pl(v.npT)],
+
         [$N_(E T)$], $E T_r \/ E T_s$, [#pl(v.net)],
       ),
       caption: [Wskaźniki korzyści z redundancji.],
@@ -755,12 +816,16 @@ $
     #if v.series [
       Po podstawieniu $R_r (t)$:
 
-      $ N_(R(t)) = (R_r (t)) / (R_s (t)) = (#dwa($(t)$) R_s (t)) / (R_s (t)) = #n-wzor($t$). $
+      $
+        N_(R(t)) = (R_r (t)) / (R_s (t)) = (#dwa($(t)$) R_s (t)) / (R_s (t)) = #n-wzor($t$).
+      $
     ]
 
     Największa wartość $N_(R(t))$ w przedziale $[0, #liczba(v.horizon)]$ h:
 
-    $ t^* = #liczba(v.tStar) thin "h", quad max N_(R(t)) #if v.series { $= #n-wzor($t^*$)$ } = #pl(v.maxNr). $
+    $
+      t^* = #liczba(v.tStar) thin "h", quad max N_(R(t)) #if v.series { $= #n-wzor($t^*$)$ } = #pl(v.maxNr).
+    $
 
     #figure(
       lq.diagram(
@@ -773,7 +838,9 @@ $
         lq.hlines(float(v.maxNr), stroke: (paint: gray, dash: "dashed")),
         lq.vlines(v.tStar, stroke: (paint: gray, dash: "dashed")),
         lq.scatter((v.tStar,), (float(v.maxNr),), color: maroon, size: 6pt),
-        lq.place(0%, float(v.maxNr), align: left + top, pad(0.3em)[$max N_(R(t))$]),
+        lq.place(0%, float(v.maxNr), align: left + top, pad(
+          0.3em,
+        )[$max N_(R(t))$]),
         lq.place(
           v.tStar,
           100%,
