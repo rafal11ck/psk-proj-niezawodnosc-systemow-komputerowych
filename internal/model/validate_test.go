@@ -19,6 +19,8 @@ structure:
   ser:
     - el: 1
     - par: [{el: 2}, {el: 3}]
+redundancy:
+  - dup: [1]
 `
 
 func check(t *testing.T, doc string) error {
@@ -52,6 +54,12 @@ func TestInvalidDocumentsAreRejected(t *testing.T) {
 			strings.Replace(good, "par: [{el: 2}, {el: 3}]", "par: [{el: 2}, {el: 2}]", 1), "dokładnie raz"},
 		"wezel z dwoma polami naraz": {
 			strings.Replace(good, "- el: 1\n", "- {el: 1, ser: [{el: 9}]}\n", 1), "dokładnie jedno z pól"},
+		"dublowanie nieistniejacego elementu": {
+			strings.Replace(good, "dup: [1]", "dup: [7]", 1), "dublowany element 7"},
+		"dublowanie tego samego elementu dwa razy": {
+			strings.Replace(good, "dup: [1]", "dup: [1, 1]", 1), "dublowany element 1"},
+		"pusty wariant": {
+			strings.Replace(good, "dup: [1]", "dup: []", 1), "brak elementów do zdublowania"},
 		"brak elementow alternatywnych": {
 			strings.Replace(good, "par: [{el: 2}, {el: 3}]", "ser: [{el: 2}, {el: 3}]", 1), "funkcje alternatywne"},
 	}

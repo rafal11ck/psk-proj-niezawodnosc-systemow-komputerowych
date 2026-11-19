@@ -80,6 +80,20 @@ func (n Node) Duplicate(id, spare int) Node {
 	}
 }
 
+// IsSeries reports whether element id is a plain series factor of the whole
+// structure, so that its failure alone stops the system.
+func (n Node) IsSeries(id int) bool {
+	if n.El != 0 {
+		return n.El == id
+	}
+	for _, c := range n.Ser {
+		if c.El == id {
+			return true
+		}
+	}
+	return false
+}
+
 // filled counts how many of the three variants the node sets.
 func (n Node) filled() int {
 	c := 0
@@ -91,12 +105,18 @@ func (n Node) filled() int {
 	return c
 }
 
+// Variant lists the elements that each get an identical spare in parallel.
+type Variant struct {
+	Dup []int `yaml:"dup"`
+}
+
 // Config is system.yaml.
 type Config struct {
-	N         int       `yaml:"N"         validate:"required,min=1"`
-	Elements  []Element `yaml:"elements"  validate:"required,min=1,dive"`
-	Links     []Link    `yaml:"links"     validate:"dive"`
-	Structure Node      `yaml:"structure"`
+	N          int       `yaml:"N"          validate:"required,min=1"`
+	Elements   []Element `yaml:"elements"   validate:"required,min=1,dive"`
+	Links      []Link    `yaml:"links"      validate:"dive"`
+	Structure  Node      `yaml:"structure"`
+	Redundancy []Variant `yaml:"redundancy"`
 }
 
 // Count is n, the number of elements. Nothing here assumes 8.

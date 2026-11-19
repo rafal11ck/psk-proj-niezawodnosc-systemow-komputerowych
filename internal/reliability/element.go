@@ -11,6 +11,10 @@ const Micro = 1e-6
 // Delta is the interval width Δ = 100 h from the assignment (point 2b).
 const Delta = 100
 
+// Horizon is the end of [0, 100 000] h, where the assignment (point 3e) looks
+// for the largest benefit N_R(t).
+const Horizon = 100_000
+
 // Instant is the instant t = 100 + 5N [h] the assignment evaluates at.
 func Instant(bigN int) int { return 100 + 5*bigN }
 
@@ -22,6 +26,18 @@ func LambdaUnits(bigN, n, i int) int {
 		return 2 * bigN * i
 	}
 	return 3 * bigN * (n + 1 - i)
+}
+
+// Rates maps an element id to its λ in multiples of Micro. A spare takes the
+// rate of the element it duplicates, which the id-based formula cannot give.
+type Rates map[int]int
+
+func BaseRates(bigN, n int) Rates {
+	out := Rates{}
+	for i := 1; i <= n; i++ {
+		out[i] = LambdaUnits(bigN, n, i)
+	}
+	return out
 }
 
 // Lambda returns λ exactly: an integer over 1e6.

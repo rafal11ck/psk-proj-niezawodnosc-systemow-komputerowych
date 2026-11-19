@@ -28,13 +28,14 @@ func TestExpansionMonomials(t *testing.T) {
 func TestCollectingSharesAnExponent(t *testing.T) {
 	cfg, _ := system(t)
 	exp := Expand(cfg.Structure)
-	if got, want := len(exp.Terms(cfg.N, cfg.Count())), 8; got != want {
+	rates := BaseRates(cfg.N, cfg.Count())
+	if got, want := len(exp.Terms(rates)), 8; got != want {
 		t.Fatalf("roznych wykladnikow = %d, want %d", got, want)
 	}
 
 	var at168 [][]int
 	for _, m := range exp {
-		if m.Rate(cfg.N, cfg.Count()) == 168 {
+		if m.Rate(rates) == 168 {
 			at168 = append(at168, m.Elements)
 		}
 	}

@@ -47,7 +47,7 @@ func parse(t *testing.T, doc string) model.Config {
 func system(t *testing.T) (model.Config, Terms) {
 	t.Helper()
 	cfg := parse(t, systemDoc)
-	return cfg, Of(cfg.Structure, cfg.N, cfg.Count())
+	return cfg, Of(cfg.Structure, BaseRates(cfg.N, cfg.Count()))
 }
 
 // allElements lists 1..n for the analysed system.

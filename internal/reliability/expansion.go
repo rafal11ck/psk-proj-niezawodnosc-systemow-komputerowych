@@ -16,10 +16,10 @@ type Monomial struct {
 
 // Rate is the exponent this monomial contributes once R_i = e^(-λ_i t) is
 // substituted: the exponents of a product add up.
-func (m Monomial) Rate(bigN, n int) int {
+func (m Monomial) Rate(rates Rates) int {
 	sum := 0
 	for _, i := range m.Elements {
-		sum += LambdaUnits(bigN, n, i)
+		sum += rates[i]
 	}
 	return sum
 }
@@ -99,10 +99,10 @@ func Expand(node model.Node) Expansion {
 }
 
 // SortedByRate orders the monomials the way the report lists them.
-func (x Expansion) SortedByRate(bigN, n int) Expansion {
+func (x Expansion) SortedByRate(rates Rates) Expansion {
 	out := slices.Clone(x)
 	slices.SortFunc(out, func(a, b Monomial) int {
-		if d := a.Rate(bigN, n) - b.Rate(bigN, n); d != 0 {
+		if d := a.Rate(rates) - b.Rate(rates); d != 0 {
 			return d
 		}
 		return slices.Compare(a.Elements, b.Elements)
@@ -112,10 +112,10 @@ func (x Expansion) SortedByRate(bigN, n int) Expansion {
 
 // Terms substitutes R_i = e^(-λ_i t) and collects monomials that share an
 // exponent — that collecting is where coefficients above 1 come from.
-func (x Expansion) Terms(bigN, n int) Terms {
+func (x Expansion) Terms(rates Rates) Terms {
 	out := Terms{}
 	for _, m := range x {
-		out[m.Rate(bigN, n)] += m.Coeff
+		out[m.Rate(rates)] += m.Coeff
 	}
 	return out.prune()
 }

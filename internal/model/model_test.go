@@ -28,3 +28,12 @@ func TestDuplicate(t *testing.T) {
 		t.Errorf("Duplicate zmienilo wejscie: %+v", base.Ser[0])
 	}
 }
+
+func TestIsSeries(t *testing.T) {
+	n := Node{Ser: []Node{{El: 1}, {Par: []Node{{El: 2}, {El: 3}}}}}
+	for id, want := range map[int]bool{1: true, 2: false, 3: false} {
+		if got := n.IsSeries(id); got != want {
+			t.Errorf("IsSeries(%d) = %v, want %v", id, got, want)
+		}
+	}
+}

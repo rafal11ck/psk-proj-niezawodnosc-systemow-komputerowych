@@ -41,41 +41,47 @@ type Term struct {
 	Coeff int `yaml:"coeff"`
 }
 
-// PlotPoint is one sample of N_R(t) for the point-3e chart.
+// PlotPoint is one sample of N_R(t) for the chart.
 type PlotPoint struct {
 	T  int     `yaml:"t"`
 	Nr float64 `yaml:"nr"`
 }
 
-// Redundancy carries point 3: the series element DupID is duplicated by a
-// parallel spare SpareID with the same λ.
-type Redundancy struct {
-	DupID    int    `yaml:"dupId"`    // duplicated element
-	DupName  string `yaml:"dupName"`  // name of the duplicated element
-	SpareID  int    `yaml:"spareId"`  // added spare
-	DupUnits int    `yaml:"dupUnits"` // λ of the duplicated element, in units of Micro
+// Spare is an element added in parallel to element Of, with the same λ.
+type Spare struct {
+	Of    int `yaml:"of"`
+	ID    int `yaml:"id"`
+	Units int `yaml:"units"`
+}
 
-	// Topology the report renders (3a, 3b): the base system plus the spare.
-	Elements  []model.Element `yaml:"elements"`  // elements incl. the spare
-	Links     []model.Link    `yaml:"links"`     // links incl. the spare's
-	Structure model.Node      `yaml:"structure"` // reliability structure with the spare
+// Variant is one redundancy variant (point 3 onwards), compared against the
+// base system.
+type Variant struct {
+	Spares []Spare `yaml:"spares"`
+	// Every duplicated element is a series factor of the base system, so
+	// R_r = Π(2 - R_k)·R_s and N_R(t) = Π(2 - e^(-λ_k t)) hold.
+	Series bool `yaml:"series"`
 
-	Terms   []Term `yaml:"terms"`   // 3c, R_r(t) = Σ c·e^(-rμt)
-	Rr      string `yaml:"rr"`      // 3c, R_r(t)
-	RrDelta string `yaml:"rrDelta"` // R_r(t+Δ)
-	Pr      string `yaml:"pr"`      // 3c, P_r(t,t+Δ)
-	Etr     string `yaml:"etr"`     // 3c, ET_r [h]
-	EtrSum  string `yaml:"etrSum"`  // 3c, the dimensionless Σ c/r
+	Elements  []model.Element `yaml:"elements"`
+	Links     []model.Link    `yaml:"links"`
+	Structure model.Node      `yaml:"structure"`
 
-	NrT string `yaml:"nrT"` // 3d, N_R(t)
-	Nr0 string `yaml:"nr0"` // 3d, N_R(0)
-	NpT string `yaml:"npT"` // 3d, N_P(t,t+Δ)
-	Net string `yaml:"net"` // 3d, N_ET
+	Terms   []Term `yaml:"terms"`
+	Rr      string `yaml:"rr"`
+	RrDelta string `yaml:"rrDelta"`
+	Pr      string `yaml:"pr"`
+	Etr     string `yaml:"etr"`
+	EtrSum  string `yaml:"etrSum"`
 
-	Horizon int         `yaml:"horizon"` // 3e, right end of the search interval
-	TStar   int         `yaml:"tStar"`   // 3e, argmax of N_R(t)
-	MaxNr   string      `yaml:"maxNr"`   // 3e, max N_R(t)
-	Plot    []PlotPoint `yaml:"plot"`    // 3e, chart samples
+	NrT string `yaml:"nrT"`
+	Nr0 string `yaml:"nr0"`
+	NpT string `yaml:"npT"`
+	Net string `yaml:"net"`
+
+	Horizon int         `yaml:"horizon"`
+	TStar   int         `yaml:"tStar"`
+	MaxNr   string      `yaml:"maxNr"`
+	Plot    []PlotPoint `yaml:"plot"`
 }
 
 type Result struct {
@@ -96,16 +102,17 @@ type Result struct {
 	Paths     [][]int    `yaml:"paths"`     // 2d
 	Cuts      [][]int    `yaml:"cuts"`      // 2e
 
-	Redundancy Redundancy `yaml:"redundancy"` // 3
+	Variants []Variant `yaml:"variants"` // 3 onwards, in system.yaml order
 }
 
 func compute(cfg model.Config) Result {
 	n := cfg.Count()
 	t := reliability.Instant(cfg.N)
 	res := Result{N: cfg.N, Count: n, T: t, DeltaT: reliability.Delta}
+	rates := reliability.BaseRates(cfg.N, n)
 
 	for _, e := range cfg.Elements {
-		units := reliability.LambdaUnits(cfg.N, n, e.ID)
+		units := rates[e.ID]
 		res.Elements = append(res.Elements, ElementResult{
 			Element:     e,
 			LambdaUnits: units,
@@ -117,13 +124,13 @@ func compute(cfg model.Config) Result {
 	}
 
 	expansion := reliability.Expand(cfg.Structure)
-	for _, m := range expansion.SortedByRate(cfg.N, n) {
+	for _, m := range expansion.SortedByRate(rates) {
 		res.Monomials = append(res.Monomials, Monomial{
-			Elements: m.Elements, Coeff: m.Coeff, Rate: m.Rate(cfg.N, n),
+			Elements: m.Elements, Coeff: m.Coeff, Rate: m.Rate(rates),
 		})
 	}
 
-	rs := expansion.Terms(cfg.N, n)
+	rs := expansion.Terms(rates)
 	for _, r := range slices.Sorted(maps.Keys(rs)) {
 		res.Terms = append(res.Terms, Term{Rate: r, Coeff: rs[r]})
 	}
@@ -146,65 +153,68 @@ func compute(cfg model.Config) Result {
 	res.Paths = reliability.MinPaths(cfg.Structure, els)
 	res.Cuts = reliability.MinCuts(cfg.Structure, els)
 
-	res.Redundancy = redundancy(cfg, rs, et, t)
+	next := n + 1
+	for _, v := range cfg.Redundancy {
+		res.Variants = append(res.Variants, variant(cfg, v.Dup, next, rates, rs, et, t))
+		next += len(v.Dup)
+	}
 	return res
 }
 
-// redundancy computes point 3: duplicate the first element with a parallel
-// spare carrying the same λ, then recompute R_r, P_r, ET_r and the benefit
-// indices N against the base system.
-func redundancy(cfg model.Config, rs reliability.Terms, ets *big.Rat, t int) Redundancy {
-	n := cfg.Count()
-	dupID := 1
-	spareID := n + 1
-	dupUnits := reliability.LambdaUnits(cfg.N, n, dupID)
-
-	var dupName string
-	for _, e := range cfg.Elements {
-		if e.ID == dupID {
-			dupName = e.Name
-		}
+func variant(cfg model.Config, dup []int, first int, base reliability.Rates, rs reliability.Terms, ets *big.Rat, t int) Variant {
+	v := Variant{
+		Series:    true,
+		Elements:  slices.Clone(cfg.Elements),
+		Links:     slices.Clone(cfg.Links),
+		Structure: cfg.Structure,
 	}
-	red := Redundancy{DupID: dupID, DupName: dupName, SpareID: spareID, DupUnits: dupUnits}
+	rates := maps.Clone(base)
+	for k, of := range dup {
+		id := first + k
+		rates[id] = base[of]
+		v.Spares = append(v.Spares, Spare{Of: of, ID: id, Units: base[of]})
+		v.Series = v.Series && cfg.Structure.IsSeries(of)
 
-	// Topology with the spare: the report renders this, it does not derive it.
-	red.Elements = append(slices.Clone(cfg.Elements), model.Element{ID: spareID, Name: dupName})
-	red.Links = slices.Clone(cfg.Links)
-	for _, l := range cfg.Links {
-		if l.From == dupID {
-			red.Links = append(red.Links, model.Link{From: spareID, To: l.To, Label: l.Label})
+		at := slices.IndexFunc(cfg.Elements, func(e model.Element) bool { return e.ID == of })
+		v.Elements = append(v.Elements, model.Element{ID: id, Name: cfg.Elements[at].Name})
+		for _, l := range cfg.Links {
+			switch of {
+			case l.From:
+				v.Links = append(v.Links, model.Link{From: id, To: l.To, Label: l.Label})
+			case l.To:
+				v.Links = append(v.Links, model.Link{From: l.From, To: id, Label: l.Label})
+			}
 		}
+		v.Structure = v.Structure.Duplicate(of, id)
 	}
-	red.Structure = cfg.Structure.Duplicate(dupID, spareID)
 
-	rr := rs.Redundant(dupUnits)
+	rr := reliability.Of(v.Structure, rates)
 	for _, r := range slices.Sorted(maps.Keys(rr)) {
-		red.Terms = append(red.Terms, Term{Rate: r, Coeff: rr[r]})
+		v.Terms = append(v.Terms, Term{Rate: r, Coeff: rr[r]})
 	}
-	red.Rr = round(rr.At(t))
-	red.RrDelta = round(rr.At(t + reliability.Delta))
-	red.Pr = round(rr.NoFailure(t, reliability.Delta))
+	v.Rr = round(rr.At(t))
+	v.RrDelta = round(rr.At(t + reliability.Delta))
+	v.Pr = round(rr.NoFailure(t, reliability.Delta))
 
 	etr := rr.ExpectedUptime()
-	red.Etr = etr.FloatString(1)
-	red.EtrSum = new(big.Rat).Mul(etr, big.NewRat(1, 1_000_000)).FloatString(8)
+	v.Etr = etr.FloatString(1)
+	v.EtrSum = new(big.Rat).Mul(etr, big.NewRat(1, 1_000_000)).FloatString(8)
 
-	red.NrT = round(rr.At(t) / rs.At(t))
-	red.Nr0 = round(rr.At(0) / rs.At(0))
-	red.NpT = round(rr.NoFailure(t, reliability.Delta) / rs.NoFailure(t, reliability.Delta))
-	red.Net = new(big.Rat).Quo(etr, ets).FloatString(Digits)
+	v.NrT = round(rr.At(t) / rs.At(t))
+	v.Nr0 = round(rr.At(0) / rs.At(0))
+	v.NpT = round(rr.NoFailure(t, reliability.Delta) / rs.NoFailure(t, reliability.Delta))
+	v.Net = new(big.Rat).Quo(etr, ets).FloatString(Digits)
 
-	const horizon = 100_000
-	red.Horizon = horizon
+	v.Horizon = reliability.Horizon
 	best, bestT := -1.0, 0
-	for tt := 0; tt <= horizon; tt += 100 {
-		if v := rr.At(tt) / rs.At(tt); v > best {
-			best, bestT = v, tt
+	for tt := 0; tt <= reliability.Horizon; tt++ {
+		if nr := rr.At(tt) / rs.At(tt); nr > best {
+			best, bestT = nr, tt
 		}
 	}
-	red.TStar, red.MaxNr = bestT, round(best)
-	for tt := 0; tt <= horizon; tt += 2500 {
-		red.Plot = append(red.Plot, PlotPoint{T: tt, Nr: rr.At(tt) / rs.At(tt)})
+	v.TStar, v.MaxNr = bestT, round(best)
+	for tt := 0; tt <= reliability.Horizon; tt += reliability.Horizon / 40 {
+		v.Plot = append(v.Plot, PlotPoint{T: tt, Nr: rr.At(tt) / rs.At(tt)})
 	}
-	return red
+	return v
 }

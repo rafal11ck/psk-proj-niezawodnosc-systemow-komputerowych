@@ -15,7 +15,7 @@ system.yaml  ──►  src/ (Go)  ──►  out/results.yaml  ──►  spr/s
 
 | ścieżka | rola |
 |---|---|
-| `system.yaml` | dane: `N`, elementy, połączenia, struktura niezawodnościowa |
+| `system.yaml` | dane: `N`, elementy, połączenia, struktura niezawodnościowa, warianty rezerwowania |
 | `cmd/nsk/` | program: wczytanie, złożenie wyniku |
 | `internal/model/` | typy danych i ich walidacja |
 | `internal/reliability/` | $\lambda_i$, $R_s(t)$, ścieżki i cięcia |
@@ -33,6 +33,16 @@ i wykładniki postaci wykładniczej $R_s(t)=\sum c_j e^{-r_j \mu t}$ są całkow
 $ET_s$ liczone jest jako suma ułamków na `big.Rat`, więc **dokładnie** —
 całkowania numerycznego nie ma. Jedyne zaokrąglenie w całym rachunku to
 `math.Exp` przy drukowaniu $R_s$ i $P_s$.
+
+## Kolejny wariant rezerwowania
+
+1. W `system.yaml` dopisać wariant do `redundancy`, np. `- dup: [2]` albo
+   `- dup: [1, 2]`. Każdy wymieniony element dostaje równoległą rezerwę
+   obciążoną o tej samej $\lambda$.
+2. `task calc`.
+3. W `spr/spr.typ` dodać punkt: nagłówek, opis i
+   `#wariant(res.variants.at(1))` (indeks jak w `redundancy`).
+   Opcjonalnie `schemat: [...]` i `struktura: [...]` z tekstem nad rysunkami.
 
 ## Stan
 

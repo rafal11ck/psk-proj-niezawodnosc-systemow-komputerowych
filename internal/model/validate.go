@@ -61,6 +61,20 @@ func checkDocument(sl validator.StructLevel) {
 			"struktura musi obejmować każdy element dokładnie raz, otrzymano %v",
 			slices.Sorted(slices.Values(used))))
 	}
+	for k, v := range cfg.Redundancy {
+		if len(v.Dup) == 0 {
+			fail("redundancy", "dup", fmt.Sprintf("wariant %d: brak elementów do zdublowania", k+1))
+		}
+		seen := map[int]bool{}
+		for _, id := range v.Dup {
+			if id < 1 || id > n || seen[id] {
+				fail("redundancy", "dup", fmt.Sprintf(
+					"wariant %d: dublowany element %d nie istnieje albo się powtarza", k+1, id))
+			}
+			seen[id] = true
+		}
+	}
+
 	// Point 1 requires at least two elements performing alternative functions.
 	if !cfg.Structure.HasParallel() {
 		fail("structure", "parallel",

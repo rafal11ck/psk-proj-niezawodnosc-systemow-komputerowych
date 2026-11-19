@@ -1,5 +1,6 @@
 #import "@preview/diagraph:0.3.8"
 #import "@preview/lilaq:0.6.0" as lq
+#import "@preview/zero:0.6.1"
 #import "rbd.typ": rbd
 
 #let cfg = yaml("/system.yaml")
@@ -7,6 +8,8 @@
 
 // Polski separator dziesiętny; liczby formatuje program.
 #let pl(x) = str(x).replace(".", ",")
+#zero.set-num(decimal-separator: ",")
+#let liczba(x) = zero.num(str(x))
 
 // Długie sumy łamane na wiersze: lewa strona, kolejne wiersze składników,
 // na końcu wynik. Bez tego podstawienia nie mieszczą się w szerokości strony.
@@ -26,7 +29,7 @@
 #let analiza = "Analiza niezawodnościowa serwera brzegowego monitoringu przemysłowego"
 #let kierunek = "Informatyka"
 
-// Tytuł, autor i data to metadane dokumentu — trafiają też do właściwości PDF-a.
+// Tytuł, autor i data to metadane dokumentu, trafiają też do właściwości PDF-a.
 #set document(
   title: analiza,
   author: (
@@ -120,13 +123,13 @@
 })
 #show table.cell.where(y: 0): strong
 
-// Odnośnik do podpunktu pokazuje pełny numer ("1d)"), mimo że sam nagłówek
+// Odnośnik do podpunktu pokazuje pełny numer ("1d"), mimo że sam nagłówek
 // jest numerowany samą literą, jak w treści zadania.
 #show ref: it => {
   let el = it.element
   if el != none and el.func() == heading and el.level == 2 {
     let n = counter(heading).at(el.location())
-    numbering("1", n.at(0)) + numbering("a)", n.at(1))
+    numbering("1", n.at(0)) + numbering("a", n.at(1))
   } else { it }
 }
 
@@ -167,7 +170,7 @@
 
 = Zbudować przykładowy system komputerowy składający się z 8 elementów nieodnawialnych, z których przynajmniej 2 będą względem siebie pełniły alternatywne funkcje
 
-Przedmiotem analizy jest *serwer brzegowy monitoringu przemysłowego* — stanowisko
+Przedmiotem analizy jest *serwer brzegowy monitoringu przemysłowego*, czyli stanowisko
 zbierające dane pomiarowe ze sterowników na hali produkcyjnej, buforujące je
 lokalnie i przesyłające do centrum przetwarzania. System złożono z
 #cfg.elements.len() elementów nieodnawialnych, spośród których dwie pary pełnią względem
@@ -180,7 +183,7 @@ płyty głównej i do układu chłodzenia. Płyta główna z procesorem (E2) sta
 jednostkę obliczeniową i węzeł wszystkich magistral: obsługuje pamięć operacyjną
 (E3) przez DDR4, dyski (E4, E5) przez SATA oraz interfejsy komunikacyjne
 (E6, E7) przez PCIe. Dane pomiarowe trafiają na dyski pracujące w zwierciadle
-RAID 1, a następnie są wysyłane do centrum przetwarzania — zwykłym łączem
+RAID 1, a następnie są wysyłane do centrum przetwarzania zwykłym łączem
 Ethernet albo, gdy jest ono niedostępne, przez modem LTE. Układ chłodzenia (E8)
 odprowadza ciepło z obudowy; jego uszkodzenie prowadzi do przegrzania i
 zatrzymania serwera.
@@ -196,13 +199,13 @@ użytkowych:
 )
 
 Utrata choćby jednej z nich oznacza niezdatność systemu: dane niezapisane albo
-nieprzesłane są tracone bezpowrotnie, więc nie ma tu stanów pośrednich ---
+nieprzesłane są tracone bezpowrotnie, więc nie ma tu stanów pośrednich:
 system albo wykonuje swoje zadanie w całości, albo nie wykonuje go wcale.
 
 *Elementy pełniące funkcje alternatywne.* Dyski E4 i E5 przechowują identyczną
 kopię danych, więc do poprawnej pracy systemu wystarczy dowolny z nich.
-Podobnie interfejs Ethernet (E6) i modem LTE (E7) realizują to samo zadanie —
-transmisję do centrum przetwarzania — i każdy z osobna jest wystarczający.
+Podobnie interfejs Ethernet (E6) i modem LTE (E7) realizują to samo zadanie
+(transmisję do centrum przetwarzania) i każdy z osobna jest wystarczający.
 Pozostałe elementy są niezbędne: uszkodzenie któregokolwiek z nich zatrzymuje
 system.
 
@@ -246,7 +249,7 @@ podzespołami.
 
 #figure(
   diagraph.render(dot-of(cfg.elements, cfg.links), width: 100%),
-  caption: [Schemat funkcjonalny systemu — połączenia elementów.],
+  caption: [Schemat funkcjonalny systemu.],
 )
 
 == Opis niezawodnościowy elementów systemu
@@ -259,13 +262,13 @@ się fakt jego powstania.
 
 === Przyjęte założenia
 
-Wszystkie elementy systemu są *nieodnawialne*, zgodnie z treścią zadania
--- nie przewiduje się ich naprawy ani wymiany, więc uszkodzenie
+Wszystkie elementy systemu są *nieodnawialne*, zgodnie z treścią zadania:
+nie przewiduje się ich naprawy ani wymiany, więc uszkodzenie
 elementu jest zdarzeniem nieodwracalnym.
 
 Czas poprawnej pracy każdego elementu ma *rozkład wykładniczy*; jest to
 założenie przyjęte w punkcie 2 treści zadania. Rozkład ten odznacza
-się brakiem pamięci -- obiekt nieuszkodzony jest tak samo niezawodny jak nowy --
+się brakiem pamięci (obiekt nieuszkodzony jest tak samo niezawodny jak nowy)
 i stosuje się go do obiektów o uszkodzeniach czysto przypadkowych.
 Intensywność uszkodzeń jest wówczas niezależna od czasu,
 $lambda(t) = lambda = "const"$, co odpowiada drugiemu przedziałowi krzywej
@@ -279,7 +282,7 @@ prędkością ubywania obiektów zdatnych:
 $ lambda = - 1/(R(t)) dot (dif R(t))/(dif t), $
 
 co po rozdzieleniu zmiennych daje równanie różniczkowe $dif R \/ dif t =
--lambda R(t)$ z warunkiem początkowym $R(0) = 1$ --- w chwili rozpoczęcia pracy
+-lambda R(t)$ z warunkiem początkowym $R(0) = 1$, bo w chwili rozpoczęcia pracy
 element jest zdatny. Jego rozwiązaniem jest
 
 $ R(t) = e^(-lambda t). $
@@ -305,11 +308,11 @@ gdzie:
   [$e$], [stała Eulera, $e approx$ 2,718,],
   [$lambda_i$], [intensywność uszkodzeń elementu $i$, stała w czasie, w $1\/"h"$,],
   [$R_i (t)$],
-  [funkcja niezawodności elementu $i$ --- prawdopodobieństwo, że
+  [funkcja niezawodności elementu $i$, czyli prawdopodobieństwo, że
     element nie ulegnie uszkodzeniu do chwili $t$,],
 
   [$F_i (t)$],
-  [dystrybuanta trwałości --- prawdopodobieństwo, że element
+  [dystrybuanta trwałości, czyli prawdopodobieństwo, że element
     ulegnie uszkodzeniu do chwili $t$; $F_i (t) = 1 - R_i (t)$,],
 
   [$f_i (t)$], [gęstość prawdopodobieństwa czasu poprawnej pracy elementu,],
@@ -343,7 +346,7 @@ Uszkodzenia elementów rozpatrywanego systemu sklasyfikowano następująco.
 
 === Charakterystyka elementów
 
-Elementy *krytyczne* (#krytyczne) nie mają zastępstwa -- uszkodzenie
+Elementy *krytyczne* (#krytyczne) nie mają zastępstwa: uszkodzenie
 któregokolwiek z nich powoduje niezdatność systemu. Elementy *alternatywne*
 tworzą dwie pary: dyski E4 i E5 przechowują tę samą kopię danych, a interfejsy
 E6 i E7 realizują tę samą transmisję, więc w każdej parze wystarczy jeden
@@ -367,10 +370,10 @@ element zdatny.
   caption: [Kryteria uszkodzenia i rola elementów w systemie.],
 )
 
-== Struktura niezawodnościowa systemu -- schemat <struktura>
+== Struktura niezawodnościowa systemu, schemat <struktura>
 
 System ma strukturę *szeregowo-równoległą*. Część szeregową tworzą elementy
-#krytyczne, a podstruktury równoległe -- #rownolegle.
+#krytyczne, a podstruktury równoległe tworzą pary #rownolegle.
 
 #figure(
   rbd(cfg.structure, i => text(size: 10pt)[E#i]),
@@ -381,11 +384,11 @@ System ma strukturę *szeregowo-równoległą*. Część szeregową tworzą elem
 
 Czas poprawnej pracy elementów jest zgodny z rozkładem wykładniczym,
 o intensywnościach uszkodzeń zadanych w treści projektu dla numeru grupy
-projektowej $N = #res.N$ i liczby elementów $n = #res.count$:
+projektowej $N = #res.N$:
 
 $
             lambda_i = 2 N i dot 10^(-6) thin [1\/h] quad & "dla" i "nieparzystych", \
-  lambda_i = 3 N (n + 1 - i) dot 10^(-6) thin [1\/h] quad & "dla" i "parzystych".
+  lambda_i = 3 N (#(res.count + 1) - i) dot 10^(-6) thin [1\/h] quad & "dla" i "parzystych".
 $
 
 Wartości funkcji niezawodności wyznaczono dla chwili
@@ -396,7 +399,7 @@ Dla każdego elementu daje to:
 #let lam-wzor(e) = if calc.odd(e.id) {
   $2 dot #res.N dot #e.id$
 } else {
-  $3 dot #res.N dot (#res.count + 1 - #e.id)$
+  $3 dot #res.N dot (#(res.count + 1) - #e.id)$
 }
 
 #figure(
@@ -420,7 +423,7 @@ Dla każdego elementu daje to:
   caption: [Intensywności uszkodzeń i niezawodność elementów dla $N = #res.N$.],
 )
 
-== Funkcja niezawodności systemu $R_s (t)$
+== Funkcja niezawodności systemu $R_s (t)$ <rs>
 
 Funkcja niezawodności systemu $R_s (t)$ to prawdopodobieństwo, że system będzie
 poprawnie pracował w chwili $t$. System ma strukturę szeregowo-równoległą
@@ -499,7 +502,7 @@ gdzie:
 #let zebrane = res.terms.filter(tm => calc.abs(tm.coeff) > 1)
 #let lista(xs) = xs.map(x => [#x]).join([, ], last: [ i ])
 
-Wymnożenie nawiasów daje #res.monomials.len() jednomianów --- po jednym na każdy
+Wymnożenie nawiasów daje #res.monomials.len() jednomianów, po jednym na każdy
 wybór gałęzi w obu podstrukturach równoległych. Wykładniki składników iloczynu
 sumują się, a jednomiany o jednakowym wykładniku zbierają się w jeden wyraz.
 #if zebrane.len() > 0 [
@@ -526,7 +529,7 @@ sumują się, a jednomiany o jednakowym wykładniku zbierają się w jeden wyraz
       ))
       .flatten(),
   ),
-  caption: [Rozwinięcie $R_s (t)$ --- jednomiany i ich wykładniki.],
+  caption: [Jednomiany rozwinięcia $R_s (t)$ i ich wykładniki.],
 )
 
 Podstawiając $t = #res.t$ h:
@@ -598,7 +601,7 @@ zdatności.
 
 $ #res.paths.map(zbior).join($,$) $
 
-Minimalna formuła alternatywna --- każdemu składnikowi sumy odpowiada dokładnie
+Minimalna formuła alternatywna, w której każdemu składnikowi sumy odpowiada dokładnie
 jedna minimalna ścieżka zdatności:
 
 $ f^((#res.count))(x) = #res.paths.map(xs).join($ or $) $
@@ -611,7 +614,7 @@ jest *minimalne*, jeżeli nie zawiera żadnego innego cięcia.
 
 $ #res.cuts.map(zbior).join($,$) $
 
-Minimalna formuła koniunkcyjna --- każdemu czynnikowi iloczynu odpowiada
+Minimalna formuła koniunkcyjna, w której każdemu czynnikowi iloczynu odpowiada
 dokładnie jedno minimalne cięcie:
 
 $
@@ -620,140 +623,191 @@ $
   }).join($ and $)
 $
 
-#let red = res.redundancy
-#let el-dup-r = res.elements.find(e => e.id == red.dupId)
+#let mala(s) = { let c = s.clusters(); lower(c.first()) + c.slice(1).join() }
+#let odbiorniki(v, zap) = v.links.filter(l => l.from == zap.id).map(l => {
+  mala(v.elements.find(e => e.id == l.to).name) + " (E" + str(l.to) + ")"
+})
 
-= Zdublować pierwszy element --- dodać element rezerwowy (E#red.spareId) o intensywności $lambda_#red.spareId = lambda_#red.dupId$ i umieścić go jako redundancję pierwszego elementu systemu
+#let para-r(zap) = $R_(#zap.of parallel #zap.id)$
+#let zapas(n, v) = if "par" in n and n.par.len() == 2 and n.par.all(c => "el" in c) {
+  v.spares.find(zap => zap.of == n.par.at(0).el and zap.id == n.par.at(1).el)
+}
+#let blok(n, v, para) = {
+  let zap = zapas(n, v)
+  if zap != none { para(zap) } else if "el" in n { $R_#n.el$ } else if "ser" in n {
+    n.ser.map(c => blok(c, v, para)).join()
+  } else if n.par.len() == 2 {
+    let (a, b) = n.par.map(c => blok(c, v, para))
+    $(#a + #b - #a #b)$
+  } else {
+    $[1 - #n.par.map(c => $(1 - #blok(c, v, para))$).join()]$
+  }
+}
 
-Element E#red.dupId (#red.dupName) jest elementem szeregowym struktury, więc
-jego uszkodzenie samo w sobie unieruchamia system (cięcie jednoelementowe
-$\{#red.dupId\}$). Do systemu dodaje się element rezerwowy E#red.spareId ---
-identyczny egzemplarz E#red.dupId o tej samej intensywności uszkodzeń
-$lambda_#red.spareId = lambda_#red.dupId = #el-dup-r.lambda thin "1/h"$ i tej
-samej niezawodności $R_#red.spareId (t) = R_#red.dupId (t)$ --- połączony z
-E#red.dupId równolegle. Jest to *rezerwa obciążona*: element rezerwowy jest
-obciążony w takim samym stopniu jak podstawowy (ta sama intensywność uszkodzeń)
-i gotowy do natychmiastowego przejęcia pracy, więc oba elementy starzeją się od
-chwili $t = 0$. Do zasilania systemu wystarcza wówczas dowolny z dwóch
-elementów, a system traci zasilanie dopiero przy uszkodzeniu obu.
+#let wariant(v, schemat: none, struktura: none) = {
+  let jeden = v.spares.len() == 1
+  let dwa(t) = v.spares.map(zap => $(2 - R_#zap.of #t)$).join()
+  let wyk(zap, t) = $2 - e^(-lambda_#zap.of #t)$
+  let n-wzor(t) = if jeden { wyk(v.spares.first(), t) } else { v.spares.map(zap => $(#wyk(zap, t))$).join() }
+  let rozw = if jeden { $= 2 R_s (t) - R_#v.spares.first().of (t) R_s (t)$ }
 
-== Schemat funkcjonalny systemu z redundancją
+  [
+    == Schemat funkcjonalny systemu z redundancją
 
-Element rezerwowy E#red.spareId zasila te same odbiorniki co E#red.dupId
-(tory #red.links.filter(l => l.from == red.spareId).map(l => "E" + str(l.to)).join(", ", last: " i ")),
-pracując równolegle do niego.
+    #schemat
 
-#figure(
-  diagraph.render(dot-of(red.elements, red.links), width: 100%),
-  caption: [Schemat funkcjonalny systemu z redundancją zasilania (E#red.spareId).],
-)
+    #figure(
+      diagraph.render(dot-of(v.elements, v.links), width: 100%),
+      caption: [Schemat funkcjonalny systemu z redundancją.],
+    )
 
-== Struktura niezawodnościowa systemu z redundancją
+    == Struktura niezawodnościowa systemu z redundancją
 
-W strukturze niezawodnościowej pojedynczy blok E#red.dupId zostaje zastąpiony
-podstrukturą równoległą E#red.dupId $parallel$ E#red.spareId. Pozostała część
-struktury nie zmienia się.
+    #struktura
 
-#figure(
-  rbd(red.structure, i => text(size: 10pt)[E#i]),
-  caption: [Struktura niezawodnościowa systemu z redundancją.],
-)
+    #figure(
+      rbd(v.structure, i => text(size: 10pt)[E#i]),
+      caption: [Struktura niezawodnościowa systemu z redundancją.],
+    )
 
-== Wyznaczenie $R_r (t)$, $P_r (t, t + Delta)$ oraz $E T_r$
+    == Wyznaczenie $R_r (t)$, $P_r (t, t + Delta)$ oraz $E T_r$
 
-Ponieważ E#red.dupId wchodzi do $R_s (t)$ jako czynnik szeregowy
-$R_#red.dupId$, dołączenie równoległego elementu rezerwowego o tej samej
-niezawodności zastępuje ten czynnik niezawodnością pary równoległej
+    #if jeden [Niezawodność pary z elementem rezerwowym:] else [Niezawodność par z elementami rezerwowymi:]
 
-$
-  R_(#red.dupId parallel #red.spareId)(t) = 1 - (1 - R_#red.dupId)^2 = 2 R_#red.dupId - R_#red.dupId^2 = R_#red.dupId (2 - R_#red.dupId),
-$
+    #for zap in v.spares [
+      $
+        #para-r(zap) (t) & = 1 - (1 - R_#zap.of)^2 = 1 - (1 - 2 R_#zap.of + R_#zap.of^2) \
+                        & = 2 R_#zap.of - R_#zap.of^2 = R_#zap.of (2 - R_#zap.of).
+      $
+    ]
 
-skąd niezawodność całego systemu z redundancją
+    Niezawodność systemu z redundancją:
 
-$ R_r (t) = (2 - R_#red.dupId (t)) dot R_s (t) = 2 R_s (t) - R_#red.dupId (t) R_s (t). $
+    #if v.series [
+      $
+        R_r (t) & = #blok(v.structure, v, para-r) \
+                & = #dwa(none) dot #blok(cfg.structure, v, para-r) \
+                & = #dwa($(t)$) dot R_s (t) #rozw,
+      $
 
-Mnożenie przez $R_#red.dupId (t) = e^(-lambda_#red.dupId t) = e^(-#red.dupUnits mu t)$
-przesuwa wykładnik każdego składnika $R_s (t)$ o #red.dupUnits jednostek $mu$,
-więc $R_r (t)$ pozostaje skończoną sumą wykładników o całkowitych
-współczynnikach ($#red.terms.len()$ wyrazów). Po podstawieniu $t = #res.t$ h:
+      gdzie $R_s (t)$ to funkcja niezawodności systemu bez redundancji (punkt @rs).
+    ] else [
+      $
+        R_r (t) & = #blok(v.structure, v, para-r) \
+                & = #blok(v.structure, v, zap => $R_#zap.of (2 - R_#zap.of)$).
+      $
+    ]
 
-#rownanie(
-  $R_r (#res.t "h")$,
-  red.terms.enumerate().map(((k, tm)) => czlon(tm, k == 0)),
-  $#pl(red.rr).$,
-)
+    #block(breakable: false, width: 100%)[
+      Dla $t = #res.t$ h:
 
-Prawdopodobieństwo braku uszkodzenia w przedziale
-$(#res.t, #(res.t + res.deltaT))$ h liczy się tak samo jak w punkcie 2b):
+      #rownanie(
+        $R_r (#res.t "h")$,
+        v.terms.enumerate().map(((k, tm)) => czlon(tm, k == 0)),
+        $#pl(v.rr).$,
+      )
+    ]
 
-$
-  P_r (t, t + Delta) & = 1 - [R_r (t) - R_r (t + Delta)] \
-                     & = 1 - [#pl(red.rr) - #pl(red.rrDelta)] = #pl(red.pr).
-$
+    Prawdopodobieństwo braku uszkodzenia w przedziale $(t, t + Delta)$:
 
-Oczekiwany czas zdatności --- całka z $R_r (t)$, znów jako suma całek
-elementarnych $integral_0^infinity e^(-a t) dif t = 1\/a$:
+    $
+      P_r (t, t + Delta) & = 1 - [R_r (t) - R_r (t + Delta)] \
+                         & = 1 - [#pl(v.rr) - #pl(v.rrDelta)] = #pl(v.pr).
+    $
 
-$
-  E T_r & = integral_0^infinity R_r (t) dif t = sum_k d_k / (s_k mu) = 10^6 dot #pl(red.etrSum) \
-        & approx #pl(red.etr) thin "h",
-$
+    Oczekiwany czas zdatności:
 
-gdzie $d_k$ i $s_k$ to współczynniki i wykładniki (w krotnościach $mu$)
-wyrazów $R_r (t)$.
+    $
+      E T_r = integral_0^infinity R_r (t) dif t
+            = integral_0^infinity sum_j c_j e^(-r_j mu t) dif t
+            = 1/mu sum_j c_j / r_j,
+    $
 
-== Korzyść z redundancji --- wskaźniki $N$
+    #rownanie(
+      $sum_j c_j / r_j$,
+      v.terms.enumerate().map(((k, tm)) => ulamek(tm, k == 0)),
+      $#pl(v.etrSum),$,
+      na-wiersz: 6,
+    )
 
-Korzyść z wprowadzenia rezerwy wyraża *miara redundancji strukturalnej*
-(zysk z rezerwowania) --- stosunek rozważanego wskaźnika niezawodności dla
-systemu z elementami nadmiarowymi do tego samego wskaźnika dla systemu
-wyjściowego. Dla chwili $t = #res.t$ h oraz dla $t = 0$:
+    $ E T_r = 10^6 dot #pl(v.etrSum) approx #pl(v.etr) thin "h". $
 
-#figure(
-  table(
-    columns: (auto, auto, auto),
-    align: (left, center, right),
-    inset: (x: 8pt, y: 5pt),
-    table.header[Wskaźnik][Definicja][Wartość],
-    [$N_(R(t))$], $R_r (t) \/ R_s (t)$, [#pl(red.nrT)],
-    [$N_(R(0))$], $R_r (0) \/ R_s (0)$, [#pl(red.nr0)],
-    [$N_(P(t, t+Delta))$], $P_r (t, t+Delta) \/ P_s (t, t+Delta)$, [#pl(red.npT)],
-    [$N_(E T)$], $E T_r \/ E T_s$, [#pl(red.net)],
-  ),
-  caption: [Wskaźniki korzyści z redundancji elementu E#red.dupId.],
-)
+    == Wskaźniki korzyści z redundancji
 
-W chwili $t = 0$ oba systemy są na pewno zdatne ($R_s (0) = R_r (0) = 1$), więc
-$N_(R(0)) = 1$ --- redundancja nie daje jeszcze żadnej korzyści. Dla $t = #res.t$ h
-wszystkie wskaźniki są większe od 1, co potwierdza wzrost niezawodności;
-największy jest przyrost oczekiwanego czasu zdatności
-($N_(E T) = #pl(red.net)$, tj. o #pl(str(calc.round((float(red.net) - 1) * 100, digits: 1))) %).
+    Wyniki dla $t = #res.t$ h i $t = 0$:
 
-== Chwila $t^*$ maksymalnej korzyści $N_(R(t))$
+    #figure(
+      table(
+        columns: (auto, auto, auto),
+        align: (left, center, right),
+        inset: (x: 8pt, y: 5pt),
+        table.header[Wskaźnik][Definicja][Wartość],
+        [$N_(R(t))$], $R_r (t) \/ R_s (t)$, [#pl(v.nrT)],
+        [$N_(R(0))$], $R_r (0) \/ R_s (0)$, [#pl(v.nr0)],
+        [$N_(P(t, t+Delta))$], $P_r (t, t+Delta) \/ P_s (t, t+Delta)$, [#pl(v.npT)],
+        [$N_(E T)$], $E T_r \/ E T_s$, [#pl(v.net)],
+      ),
+      caption: [Wskaźniki korzyści z redundancji.],
+    )
 
-Dla elementu szeregowego wskaźnik upraszcza się do
+    == Chwila $t^*$ maksymalnej korzyści $N_(R(t))$
 
-$ N_(R(t)) = R_r (t) / R_s (t) = (2 - R_#red.dupId (t)) R_s (t) / R_s (t) = 2 - e^(-lambda_#red.dupId t), $
+    #if v.series [
+      Po podstawieniu $R_r (t)$:
 
-a więc jest *funkcją rosnącą* $t$: rośnie od $N_(R(0)) = 1$ do $2$ przy
-$t -> infinity$. W przedziale $[0, #red.horizon]$ h maksimum przypada zatem na
-prawym jego końcu:
+      $ N_(R(t)) = (R_r (t)) / (R_s (t)) = (#dwa($(t)$) R_s (t)) / (R_s (t)) = #n-wzor($t$). $
+    ]
 
-$ t^* = #red.horizon thin "h", quad max N_(R(t)) = 2 - e^(-lambda_#red.dupId t^*) = #pl(red.maxNr). $
+    Największa wartość $N_(R(t))$ w przedziale $[0, #liczba(v.horizon)]$ h:
 
-#let px = red.plot.map(p => p.t)
-#let py = red.plot.map(p => p.nr)
+    $ t^* = #liczba(v.tStar) thin "h", quad max N_(R(t)) #if v.series { $= #n-wzor($t^*$)$ } = #pl(v.maxNr). $
 
-#figure(
-  lq.diagram(
-    width: 12cm,
-    height: 6.5cm,
-    xlabel: $t thin ["h"]$,
-    ylabel: $N_(R(t))$,
-    lq.plot(px, py, mark: none),
-    lq.vlines(red.tStar, stroke: (paint: gray, dash: "dashed")),
-    lq.scatter((red.tStar,), (py.last(),), color: maroon, size: 6pt),
-  ),
-  caption: [Przebieg $N_(R(t))$ w przedziale $[0, #red.horizon]$ h; zaznaczono $t^*$ oraz $max N_(R(t)) = #pl(red.maxNr)$.],
+    #figure(
+      lq.diagram(
+        width: 12cm,
+        height: 6.5cm,
+        xaxis: (exponent: 0, tick-distance: v.horizon / 5),
+        xlabel: $t thin ["h"]$,
+        ylabel: $N_(R(t))$,
+        lq.plot(v.plot.map(p => p.t), v.plot.map(p => p.nr), mark: none),
+        lq.hlines(float(v.maxNr), stroke: (paint: gray, dash: "dashed")),
+        lq.vlines(v.tStar, stroke: (paint: gray, dash: "dashed")),
+        lq.scatter((v.tStar,), (float(v.maxNr),), color: maroon, size: 6pt),
+        lq.place(0%, float(v.maxNr), align: left + top, pad(0.3em)[$max N_(R(t))$]),
+        lq.place(
+          v.tStar,
+          100%,
+          align: (if v.tStar > v.horizon / 2 { right } else { left }) + bottom,
+          pad(0.3em)[$t^*$],
+        ),
+      ),
+      caption: [Wskaźnik $N_(R(t))$ w zależności od czasu.],
+    )
+  ]
+}
+
+#let red = res.variants.at(0)
+#let zap = red.spares.first()
+
+= Zdublować pierwszy element, czyli dodać jeden element (nr #zap.id o intensywności $lambda_#zap.of$ i funkcji niezawodności $R_#zap.of (t)$) i umieścić go jako redundancję dla pierwszego elementu systemu
+
+Pierwszym elementem jest zasilacz (E#zap.of). Jest on połączony szeregowo z
+resztą systemu, więc jego awaria od razu wyłącza cały serwer (cięcie
+$\{#zap.of\}$). Równolegle do niego dodano drugi, taki sam zasilacz
+(E#zap.id) o intensywności uszkodzeń
+$lambda_#zap.id = lambda_#zap.of = #zap.units dot 10^(-6) thin 1\/h$.
+Jest to rezerwowanie stałe: drugi zasilacz jest przyłączony na stałe i pracuje
+razem z pierwszym od chwili $t = 0$, a serwer traci zasilanie dopiero po
+uszkodzeniu obu.
+
+#wariant(
+  red,
+  schemat: [
+    Drugi zasilacz (E#zap.id) podłączono równolegle do pierwszego. Z obu
+    zasilane są: #odbiorniki(red, zap).join(", ", last: " i ").
+  ],
+  struktura: [
+    Pojedynczy blok zasilacza (E#zap.of) zastąpiono równoległą parą zasilaczy
+    (E#zap.of i E#zap.id), reszta struktury się nie zmienia.
+  ],
 )

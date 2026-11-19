@@ -63,9 +63,11 @@ func TestReliabilityBoundaries(t *testing.T) {
 
 // Duplicating the series element E1 with an equal parallel spare multiplies
 // R_s by (2 - R_1): R_r(t) = (2 - e^(-λ_1 t))·R_s(t), and R_r(0) = 1.
-func TestRedundant(t *testing.T) {
+func TestDuplicatedSeriesElement(t *testing.T) {
 	cfg, rs := system(t)
-	rr := rs.Redundant(LambdaUnits(cfg.N, cfg.Count(), 1)) // λ_1 = 6 units
+	rates := BaseRates(cfg.N, cfg.Count())
+	rates[9] = rates[1]
+	rr := Of(cfg.Structure.Duplicate(1, 9), rates)
 	if got := rr.At(0); math.Abs(got-1) > 1e-12 {
 		t.Errorf("Rr(0) = %.15f, want 1", got)
 	}
@@ -75,11 +77,27 @@ func TestRedundant(t *testing.T) {
 			t.Errorf("Rr(%d) = %.12f, want (2-R1)Rs = %.12f", at, got, want)
 		}
 	}
-	// redundancy raises the expected uptime, and it stays an exact fraction
 	if etr, ets := rr.ExpectedUptime(), rs.ExpectedUptime(); etr.Cmp(ets) <= 0 {
 		t.Errorf("ETr %s nie wieksze od ETs %s", etr.RatString(), ets.RatString())
 	} else if etr.IsInt() {
 		t.Errorf("ETr wyszlo calkowite (%s), spodziewany ulamek", etr.RatString())
+	}
+}
+
+// A spare added inside a parallel group: E4 ∥ E9 ∥ E5 with R_9 = R_4, so the
+// group fails only when all three fail.
+func TestDuplicatedParallelElement(t *testing.T) {
+	cfg, rs := system(t)
+	rates := BaseRates(cfg.N, cfg.Count())
+	rates[9] = rates[4]
+	rr := Of(cfg.Structure.Duplicate(4, 9), rates)
+	for _, at := range []int{0, 115, 50_000} {
+		r4, r5 := Survival(rates[4], at), Survival(rates[5], at)
+		old := 1 - (1-r4)*(1-r5)
+		now := 1 - (1-r4)*(1-r4)*(1-r5)
+		if got, want := rr.At(at), rs.At(at)/old*now; math.Abs(got-want) > 1e-12 {
+			t.Errorf("Rr(%d) = %.12f, want %.12f", at, got, want)
+		}
 	}
 }
 
