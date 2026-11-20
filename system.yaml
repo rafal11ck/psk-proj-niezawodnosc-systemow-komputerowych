@@ -38,3 +38,10 @@ structure:
 
 redundancy:
   - dup: [1]
+  - dup: [2]
+  - dup: [3]
+  - dup: [4]
+  - dup: [5]
+  - dup: [6]
+  - dup: [7]
+  - dup: [8]

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"maps"
 	"math/big"
 	"slices"
@@ -79,9 +80,36 @@ type Variant struct {
 	Net string `yaml:"net"`
 
 	Horizon int         `yaml:"horizon"`
+	Step    int         `yaml:"step"`
 	TStar   int         `yaml:"tStar"`
 	MaxNr   string      `yaml:"maxNr"`
 	Plot    []PlotPoint `yaml:"plot"`
+
+	benefit benefit
+}
+
+// benefit keeps the unrounded measures so variants are ranked on exact values,
+// not on the six printed decimals, where some of them tie.
+type benefit struct{ nrT, npT, net, maxNr float64 }
+
+// Order lists indexes into Variants from the largest benefit to the smallest,
+// one list per measure (conclusion b).
+type Order struct {
+	NrT   []int `yaml:"nrT"`
+	NpT   []int `yaml:"npT"`
+	Net   []int `yaml:"net"`
+	MaxNr []int `yaml:"maxNr"`
+}
+
+func rank(vs []Variant, key func(benefit) float64) []int {
+	idx := make([]int, len(vs))
+	for i := range idx {
+		idx[i] = i
+	}
+	slices.SortStableFunc(idx, func(a, b int) int {
+		return cmp.Compare(key(vs[b].benefit), key(vs[a].benefit))
+	})
+	return idx
 }
 
 type Result struct {
@@ -103,6 +131,7 @@ type Result struct {
 	Cuts      [][]int    `yaml:"cuts"`      // 2e
 
 	Variants []Variant `yaml:"variants"` // 3 onwards, in system.yaml order
+	Order    Order     `yaml:"order"`
 }
 
 func compute(cfg model.Config) Result {
@@ -158,6 +187,12 @@ func compute(cfg model.Config) Result {
 		res.Variants = append(res.Variants, variant(cfg, v.Dup, next, rates, rs, et, t))
 		next += len(v.Dup)
 	}
+	res.Order = Order{
+		NrT:   rank(res.Variants, func(b benefit) float64 { return b.nrT }),
+		NpT:   rank(res.Variants, func(b benefit) float64 { return b.npT }),
+		Net:   rank(res.Variants, func(b benefit) float64 { return b.net }),
+		MaxNr: rank(res.Variants, func(b benefit) float64 { return b.maxNr }),
+	}
 	return res
 }
 
@@ -200,19 +235,24 @@ func variant(cfg model.Config, dup []int, first int, base reliability.Rates, rs 
 	v.Etr = etr.FloatString(1)
 	v.EtrSum = new(big.Rat).Mul(etr, big.NewRat(1, 1_000_000)).FloatString(8)
 
-	v.NrT = round(rr.At(t) / rs.At(t))
+	net := new(big.Rat).Quo(etr, ets)
+	v.benefit.nrT = rr.At(t) / rs.At(t)
+	v.benefit.npT = rr.NoFailure(t, reliability.Delta) / rs.NoFailure(t, reliability.Delta)
+	v.benefit.net, _ = net.Float64()
+	v.NrT = round(v.benefit.nrT)
 	v.Nr0 = round(rr.At(0) / rs.At(0))
-	v.NpT = round(rr.NoFailure(t, reliability.Delta) / rs.NoFailure(t, reliability.Delta))
-	v.Net = new(big.Rat).Quo(etr, ets).FloatString(Digits)
+	v.NpT = round(v.benefit.npT)
+	v.Net = net.FloatString(Digits)
 
-	v.Horizon = reliability.Horizon
+	v.Horizon, v.Step = reliability.Horizon, reliability.Step
 	best, bestT := -1.0, 0
-	for tt := 0; tt <= reliability.Horizon; tt++ {
+	for tt := 0; tt <= reliability.Horizon; tt += reliability.Step {
 		if nr := rr.At(tt) / rs.At(tt); nr > best {
 			best, bestT = nr, tt
 		}
 	}
 	v.TStar, v.MaxNr = bestT, round(best)
+	v.benefit.maxNr = best
 	for tt := 0; tt <= reliability.Horizon; tt += reliability.Horizon / 40 {
 		v.Plot = append(v.Plot, PlotPoint{T: tt, Nr: rr.At(tt) / rs.At(tt)})
 	}

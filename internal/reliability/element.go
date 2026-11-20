@@ -15,6 +15,9 @@ const Delta = 100
 // for the largest benefit N_R(t).
 const Horizon = 100_000
 
+// Step is how far apart, in hours, N_R(t) is evaluated when searching for t*.
+const Step = 1
+
 // Instant is the instant t = 100 + 5N [h] the assignment evaluates at.
 func Instant(bigN int) int { return 100 + 5*bigN }
 
