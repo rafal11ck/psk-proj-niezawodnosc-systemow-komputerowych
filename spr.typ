@@ -252,7 +252,22 @@ podzespołami.
 #let akcent = maroon
 #let tlo = akcent.lighten(85%)
 #let etykieta(e) = "E" + str(e.id) + "\n" + e.name
-#let dot-of(elementy, polaczenia, nowe: ()) = {
+#let dot-of(elementy, polaczenia, zapasy: ()) = {
+  let nowe = zapasy.map(z => z.id)
+  let wezly = elementy
+    .filter(e => e.id not in nowe)
+    .map(e => (
+      e,
+      ..zapasy
+        .filter(z => z.of == e.id)
+        .map(z => elementy.find(x => x.id == z.id)),
+    ))
+    .flatten()
+  let poz(id) = wezly.position(e => e.id == id)
+  let koncowy(id) = polaczenia.all(l => l.from != id)
+  let z-prawej(id) = (
+    id in nowe and polaczenia.filter(l => l.from == id).all(l => koncowy(l.to))
+  )
   let kolor = "color=\"" + akcent.to-hex() + "\""
   let blok = (
     ", penwidth=1.5, style=\"rounded,filled\", fillcolor=\""
@@ -263,10 +278,10 @@ podzespołami.
   let krawedz = ", " + kolor + ", fontcolor=\"" + akcent.to-hex() + "\""
   (
     "digraph {\n"
-      + "  rankdir=LR; splines=polyline; nodesep=0.35; ranksep=0.7;\n"
+      + "  rankdir=LR; splines=polyline; nodesep=0.35; ranksep=0.7; ordering=out;\n"
       + "  node [shape=box, style=rounded, fontsize=10, width=1.5, height=0.6];\n"
       + "  edge [fontsize=9];\n"
-      + elementy
+      + wezly
         .map(e => (
           "  "
             + str(e.id)
@@ -278,12 +293,13 @@ podzespołami.
         ))
         .join("")
       + polaczenia
+        .sorted(key: l => poz(l.from) * wezly.len() + poz(l.to))
         .map(l => (
           "  "
-            + str(l.from)
-            + " -> "
-            + str(l.to)
-            + " [label=\""
+            + if z-prawej(l.from) {
+              str(l.to) + " -> " + str(l.from) + " [dir=back, "
+            } else { str(l.from) + " -> " + str(l.to) + " [" }
+            + "label=\""
             + l.label
             + "\""
             + if l.from in nowe or l.to in nowe { krawedz } else { "" }
@@ -740,7 +756,10 @@ $
     #schemat
 
     #figure(
-      diagraph.render(dot-of(v.elements, v.links, nowe: nowe), width: 100%),
+      diagraph.render(
+        dot-of(v.elements, v.links, zapasy: v.spares),
+        width: 100%,
+      ),
       caption: [Schemat funkcjonalny systemu z redundancją. #wyroznienie],
     )
 
