@@ -249,28 +249,50 @@ Schemat przedstawia połączenia między elementami: szynę zasilania wychodząc
 z zasilacza oraz magistrale, którymi płyta główna komunikuje się z pozostałymi
 podzespołami.
 
+#let akcent = maroon
+#let tlo = akcent.lighten(85%)
 #let etykieta(e) = "E" + str(e.id) + "\n" + e.name
-#let dot-of(elementy, polaczenia) = (
-  "digraph {\n"
-    + "  rankdir=LR; splines=ortho; nodesep=0.35; ranksep=0.7;\n"
-    + "  node [shape=box, style=rounded, fontsize=10, width=1.5, height=0.6];\n"
-    + "  edge [fontsize=9];\n"
-    + elementy
-      .map(e => "  " + str(e.id) + " [label=\"" + etykieta(e) + "\"];\n")
-      .join("")
-    + polaczenia
-      .map(l => (
-        "  "
-          + str(l.from)
-          + " -> "
-          + str(l.to)
-          + " [label=\""
-          + l.label
-          + "\"];\n"
-      ))
-      .join("")
-    + "}"
-)
+#let dot-of(elementy, polaczenia, nowe: ()) = {
+  let kolor = "color=\"" + akcent.to-hex() + "\""
+  let blok = (
+    ", penwidth=1.5, style=\"rounded,filled\", fillcolor=\""
+      + tlo.to-hex()
+      + "\", "
+      + kolor
+  )
+  let krawedz = ", " + kolor + ", fontcolor=\"" + akcent.to-hex() + "\""
+  (
+    "digraph {\n"
+      + "  rankdir=LR; splines=polyline; nodesep=0.35; ranksep=0.7;\n"
+      + "  node [shape=box, style=rounded, fontsize=10, width=1.5, height=0.6];\n"
+      + "  edge [fontsize=9];\n"
+      + elementy
+        .map(e => (
+          "  "
+            + str(e.id)
+            + " [label=\""
+            + etykieta(e)
+            + "\""
+            + if e.id in nowe { blok } else { "" }
+            + "];\n"
+        ))
+        .join("")
+      + polaczenia
+        .map(l => (
+          "  "
+            + str(l.from)
+            + " -> "
+            + str(l.to)
+            + " [label=\""
+            + l.label
+            + "\""
+            + if l.from in nowe or l.to in nowe { krawedz } else { "" }
+            + "];\n"
+        ))
+        .join("")
+      + "}"
+  )
+}
 
 #figure(
   diagraph.render(dot-of(cfg.elements, cfg.links), width: 100%),
@@ -709,6 +731,8 @@ $
     v.spares.map(zap => $(#wyk(zap, t))$).join()
   }
   let rozw = if jeden { $= 2 R_s (t) - R_#v.spares.first().of (t) R_s (t)$ }
+  let nowe = v.spares.map(z => z.id)
+  let wyroznienie = [#if jeden [Element rezerwowy wyróżniono] else [Elementy rezerwowe wyróżniono] kolorem.]
 
   [
     == Schemat funkcjonalny systemu z redundancją
@@ -716,8 +740,8 @@ $
     #schemat
 
     #figure(
-      diagraph.render(dot-of(v.elements, v.links), width: 100%),
-      caption: [Schemat funkcjonalny systemu z redundancją.],
+      diagraph.render(dot-of(v.elements, v.links, nowe: nowe), width: 100%),
+      caption: [Schemat funkcjonalny systemu z redundancją. #wyroznienie],
     )
 
     == Struktura niezawodnościowa systemu z redundancją
@@ -725,8 +749,14 @@ $
     #struktura
 
     #figure(
-      rbd(v.structure, i => text(size: 10pt)[E#i]),
-      caption: [Struktura niezawodnościowa systemu z redundancją.],
+      rbd(
+        v.structure,
+        i => text(size: 10pt)[E#i],
+        styl: i => if i in nowe {
+          (fill: tlo, stroke: 1pt + akcent)
+        } else { (:) },
+      ),
+      caption: [Struktura niezawodnościowa systemu z redundancją. #wyroznienie],
     )
 
     == Wyznaczenie $R_r (t)$, $P_r (t, t + Delta)$ oraz $E T_r$

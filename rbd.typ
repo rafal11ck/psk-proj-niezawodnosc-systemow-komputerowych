@@ -25,21 +25,21 @@
 }
 
 /// Rysuje poddrzewo w pasie zaczynającym się w x0, wyśrodkowane na wysokości yc.
-#let draw(n, x0, yc, etykieta) = {
+#let draw(n, x0, yc, etykieta, styl) = {
   import cetz.draw: *
   let sz = size(n)
   let x1 = x0 + sz.w * XU
 
   if "el" in n {
     let cx = (x0 + x1) / 2
-    rect((cx - BW / 2, yc - BH / 2), (cx + BW / 2, yc + BH / 2))
+    rect((cx - BW / 2, yc - BH / 2), (cx + BW / 2, yc + BH / 2), ..styl(n.el))
     content((cx, yc), etykieta(n.el))
     line((x0, yc), (cx - BW / 2, yc))
     line((cx + BW / 2, yc), (x1, yc))
   } else if "ser" in n {
     let x = x0
     for c in n.ser {
-      draw(c, x, yc, etykieta)
+      draw(c, x, yc, etykieta, styl)
       x += size(c).w * XU
     }
   } else {
@@ -51,7 +51,7 @@
       let cyc = gora - (zajete + cs.h / 2) * YU
       zajete += cs.h
       let cx0 = x0 + (sz.w - cs.w) * XU / 2
-      draw(c, cx0, cyc, etykieta)
+      draw(c, cx0, cyc, etykieta, styl)
       line((x0, cyc), (cx0, cyc))
       line((cx0 + cs.w * XU, cyc), (x1, cyc))
       srodki.push(cyc)
@@ -62,12 +62,12 @@
 }
 
 /// Kompletny schemat z wejściem i wyjściem.
-#let rbd(drzewo, etykieta) = cetz.canvas(length: 1cm, {
+#let rbd(drzewo, etykieta, styl: _ => (:)) = cetz.canvas(length: 1cm, {
   import cetz.draw: *
   set-style(stroke: 0.5pt)
   let sz = size(drzewo)
   let lead = 0.6
-  draw(drzewo, lead, 0, etykieta)
+  draw(drzewo, lead, 0, etykieta, styl)
   line((0, 0), (lead, 0))
   line((sz.w * XU + lead, 0), (sz.w * XU + 2 * lead, 0))
   circle((0, 0), radius: 0.06, fill: black)
