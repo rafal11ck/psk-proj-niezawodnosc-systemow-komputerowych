@@ -36,12 +36,15 @@ task fmt    # typstyle -i spr.typ rbd.typ, gofmt -w .
   wyniki. W Typst nie liczyć i nie wpisywać na sztywno liczb, numerów elementów,
   wzorów działających tylko dla jednego przypadku ani przedziałów.
 - Stałe z treści zadania ($t = 100 + 5N$, $\Delta$, przedział $[0, 100\,000]$ h)
-  są w `internal/reliability/element.go`.
+  i krok szukania $t^*$ są w `internal/reliability/element.go`.
 - Plik `out/results.yaml` jest generowany i nie wolno go edytować.
 - Wariant rezerwowania to wpis w `redundancy` w `system.yaml` (`- dup: [k]`).
-  Go numeruje zapasy dalej (9, 10, 11 …), a w raporcie wariant to
-  `#wariant(res.variants.at(k))`. Kolejnych punktów nie kopiować, tylko dodawać
-  dane.
+  Go numeruje zapasy dalej (9, 10, 11 …). Pierwszy wariant to punkt 3, a
+  pozostałe punkt 4 renderuje pętlą przez `#wariant(v)`. Tabela w punkcie 5 i
+  wnioski też biorą wszystkie warianty. Kolejnych punktów nie kopiować, tylko
+  dodawać dane.
+- Wnioski nie zawierają liczb ani numerów elementów wpisanych ręcznie. Najlepszy
+  wariant i kolejność wariantów według wskaźników liczy Go (`order` w wynikach).
 
 ## Styl sprawozdania
 
@@ -63,6 +66,7 @@ Po zmianie raportu złożyć PDF i obejrzeć strony, bo łamanie stron i wykresy
 łatwo się psują. Poppler nie jest zainstalowany:
 
 ```sh
+
 nix-shell -p poppler-utils --run 'pdftotext -layout spr.pdf - ; pdftoppm -r 60 -png spr.pdf /tmp/p'
 ```
 

@@ -143,9 +143,10 @@
 // jest numerowany samą literą, jak w treści zadania.
 #show ref: it => {
   let el = it.element
-  if el != none and el.func() == heading and el.level == 2 {
+  if el != none and el.func() == heading and el.level <= 2 {
     let n = counter(heading).at(el.location())
-    numbering("1", n.at(0)) + numbering("a", n.at(1))
+    numbering("1", n.at(0))
+    if el.level == 2 { numbering("a", n.at(1)) }
   } else { it }
 }
 
@@ -186,7 +187,7 @@
 
 = Zbudować przykładowy system komputerowy składający się z 8 elementów nieodnawialnych, z których przynajmniej 2 będą względem siebie pełniły alternatywne funkcje
 
-Przedmiotem analizy jest *serwer brzegowy monitoringu przemysłowego*, czyli stanowisko
+Przedmiotem analizy jest serwer brzegowy monitoringu przemysłowego, czyli stanowisko
 zbierające dane pomiarowe ze sterowników na hali produkcyjnej, buforujące je
 lokalnie i przesyłające do centrum przetwarzania. System złożono z
 #cfg.elements.len() elementów nieodnawialnych, spośród których dwie pary pełnią względem
@@ -279,18 +280,18 @@ podzespołami.
 == Opis niezawodnościowy elementów systemu
 
 Opis niezawodnościowy elementu obejmuje kryterium uszkodzenia, klasyfikację
-uszkodzeń oraz przyjęty model czasu poprawnej pracy. *Uszkodzenie* to zdarzenie
+uszkodzeń oraz przyjęty model czasu poprawnej pracy. Uszkodzenie to zdarzenie
 polegające na przejściu obiektu ze stanu zdatności do stanu niezdatności, a
-*kryterium uszkodzenia* to cecha lub zespół cech, na których podstawie ustala
+kryterium uszkodzenia to cecha lub zespół cech, na których podstawie ustala
 się fakt jego powstania.
 
 === Przyjęte założenia
 
-Wszystkie elementy systemu są *nieodnawialne*, zgodnie z treścią zadania:
+Wszystkie elementy systemu są nieodnawialne, zgodnie z treścią zadania:
 nie przewiduje się ich naprawy ani wymiany, więc uszkodzenie
 elementu jest zdarzeniem nieodwracalnym.
 
-Czas poprawnej pracy każdego elementu ma *rozkład wykładniczy*; jest to
+Czas poprawnej pracy każdego elementu ma rozkład wykładniczy; jest to
 założenie przyjęte w punkcie 2 treści zadania. Rozkład ten odznacza
 się brakiem pamięci (obiekt nieuszkodzony jest tak samo niezawodny jak nowy)
 i stosuje się go do obiektów o uszkodzeniach czysto przypadkowych.
@@ -379,8 +380,8 @@ Uszkodzenia elementów rozpatrywanego systemu sklasyfikowano następująco.
 
 === Charakterystyka elementów
 
-Elementy *krytyczne* (#krytyczne) nie mają zastępstwa: uszkodzenie
-któregokolwiek z nich powoduje niezdatność systemu. Elementy *alternatywne*
+Elementy krytyczne (#krytyczne) nie mają zastępstwa: uszkodzenie
+któregokolwiek z nich powoduje niezdatność systemu. Elementy alternatywne
 tworzą dwie pary: dyski E4 i E5 przechowują tę samą kopię danych, a interfejsy
 E6 i E7 realizują tę samą transmisję, więc w każdej parze wystarczy jeden
 element zdatny.
@@ -405,7 +406,7 @@ element zdatny.
 
 == Struktura niezawodnościowa systemu, schemat <struktura>
 
-System ma strukturę *szeregowo-równoległą*. Część szeregową tworzą elementy
+System ma strukturę szeregowo-równoległą. Część szeregową tworzą elementy
 #krytyczne, a podstruktury równoległe tworzą pary #rownolegle.
 
 #figure(
@@ -635,9 +636,9 @@ $
 
 == Zbiór minimalnych ścieżek zdatności
 
-Podzbiór elementów systemu nazywa się *ścieżką zdatności*, jeżeli przy
+Podzbiór elementów systemu nazywa się ścieżką zdatności, jeżeli przy
 zdatności wszystkich jego elementów system jest zdatny niezależnie od stanu
-pozostałych. Ścieżka jest *minimalna*, jeżeli nie zawiera żadnej innej ścieżki
+pozostałych. Ścieżka jest minimalna, jeżeli nie zawiera żadnej innej ścieżki
 zdatności.
 
 #let zbior(s) = $\{#s.map(str).join(", ")\}$
@@ -652,9 +653,9 @@ $ f^((#res.count))(x) = #res.paths.map(xs).join($ or $) $
 
 == Zbiór minimalnych cięć
 
-Podzbiór elementów nazywa się *cięciem*, jeżeli przy niezdatności wszystkich
+Podzbiór elementów nazywa się cięciem, jeżeli przy niezdatności wszystkich
 jego elementów system jest niezdatny niezależnie od stanu pozostałych. Cięcie
-jest *minimalne*, jeżeli nie zawiera żadnego innego cięcia.
+jest minimalne, jeżeli nie zawiera żadnego innego cięcia.
 
 $ #res.cuts.map(zbior).join($,$) $
 
@@ -821,7 +822,12 @@ $
       $
     ]
 
-    Największa wartość $N_(R(t))$ w przedziale $[0, #liczba(v.horizon)]$ h:
+    #if v.series [
+      Największa wartość $N_(R(t))$ w przedziale $[0, #liczba(v.horizon)]$ h:
+    ] else [
+      Największą wartość $N_(R(t))$ w przedziale $[0, #liczba(v.horizon)]$ h
+      wyznaczono numerycznie, obliczając $N_(R(t))$ co~#v.step~h:
+    ]
 
     $
       t^* = #liczba(v.tStar) thin "h", quad max N_(R(t)) #if v.series { $= #n-wzor($t^*$)$ } = #pl(v.maxNr).
@@ -856,7 +862,8 @@ $
 #let red = res.variants.at(0)
 #let zap = red.spares.first()
 
-= Zdublować pierwszy element, czyli dodać jeden element (nr #zap.id o intensywności $lambda_#zap.of$ i funkcji niezawodności $R_#zap.of (t)$) i umieścić go jako redundancję dla pierwszego elementu systemu
+#pagebreak(weak: true)
+= Zdublować pierwszy element, czyli dodać jeden element (nr #zap.id o intensywności $lambda_#zap.of$ i funkcji niezawodności $R_#zap.of (t)$) i umieścić go jako redundancję dla pierwszego elementu systemu <p3>
 
 Pierwszym elementem jest zasilacz (E#zap.of). Jest on połączony szeregowo z
 resztą systemu, więc jego awaria od razu wyłącza cały serwer (cięcie
@@ -878,3 +885,269 @@ uszkodzeniu obu.
     (E#zap.of i E#zap.id), reszta struktury się nie zmienia.
   ],
 )
+
+#let nazwa(id) = cfg.elements.find(e => e.id == id).name
+#let z-id(id) = [#mala(nazwa(id)) (E#id)]
+#let el(id) = res.elements.find(e => e.id == id)
+#let oznaczenie(v) = v.spares.map(z => [E#z.of #sym.parallel E#z.id]).join([, ])
+
+#let opis(v) = for zap in v.spares {
+  let inne = zamienniki.at(str(zap.of), default: ())
+  let ciecie = res.cuts.find(c => zap.of in c)
+  [
+    Dublowanym elementem jest #z-id(zap.of).
+    #if inne.len() == 0 [
+      Element ten jest połączony szeregowo z resztą systemu, więc jego
+      uszkodzenie od razu powoduje niezdatność systemu (cięcie #zbior(ciecie)).
+    ] else [
+      Element ten i #lista(inne.map(z-id)) pełnią funkcje alternatywne, więc
+      niezdatność systemu powoduje dopiero uszkodzenie
+      #if inne.len() == 1 [obu] else [wszystkich] (cięcie #zbior(ciecie)).
+    ]
+    Element rezerwowy (E#zap.id) jest taki sam jak element dublowany i ma
+    intensywność uszkodzeń
+    $lambda_#zap.id = lambda_#zap.of = #zap.units dot 10^(-6) thin 1\/h$.
+
+  ]
+}
+
+#let dalsze = res.variants.slice(1)
+
+#pagebreak(weak: true)
+= Zdublować kolejne elementy systemu, czyli dodać element rezerwowy (nr #dalsze.slice(0, 2).map(v => str(v.spares.first().id)).join(", ") itd.) kolejno do pozostałych elementów systemu i powtórzyć działania z pkt. #ref(<p3>)a) do #ref(<p3>)e)
+
+Każdy wariant rozpatrywano osobno: do systemu z punktu @struktura dodano jeden
+element rezerwowy, przyłączony na stałe równolegle do elementu dublowanego
+(rezerwowanie stałe), a wskaźniki korzyści odniesiono do systemu bez redundancji.
+
+#{
+  set heading(numbering: (..n) => {
+    let p = n.pos()
+    if p.len() == 2 { numbering("1.1.", ..p) } else if p.len() == 3 {
+      numbering("a)", p.last())
+    }
+  })
+  for (k, v) in dalsze.enumerate() {
+    if k > 0 { pagebreak(weak: true) }
+    heading(
+      level: 2,
+      v
+        .spares
+        .map(z => [#nazwa(z.of) (E#z.of) i element rezerwowy (E#z.id)])
+        .join([, ]),
+    )
+    opis(v)
+    {
+      set heading(offset: 1)
+      wariant(
+        v,
+        schemat: v
+          .spares
+          .map(z => [
+            Element rezerwowy (E#z.id) ma te same połączenia co element
+            dublowany (E#z.of).
+          ])
+          .join(),
+        struktura: v
+          .spares
+          .map(z => [
+            Blok elementu dublowanego (E#z.of) zastąpiono równoległą parą
+            (E#z.of i E#z.id), reszta struktury się nie zmienia.
+          ])
+          .join(),
+      )
+    }
+  }
+}
+
+= Zestawić w tabeli dla każdego wariantu rezerwowania obliczone wskaźniki $R_r (t)$, $P_r (t, t + Delta)$, $E T_r$, $N_(R(t))$, $N_(P(t, t + Delta))$, $N_(E T)$, $t^*$, $max N_(R(t))$
+
+Wartości dla $t = #res.t$ h i $Delta = #res.deltaT$ h:
+
+#figure(
+  text(size: 9pt, table(
+    columns: 9,
+    align: (left,) + (right,) * 8,
+    inset: (x: 4pt, y: 5pt),
+    table.header(
+      [Wariant],
+      $R_r (t)$,
+      $P_r (t, t + Delta)$,
+      [$E T_r$ [h]],
+      $N_(R(t))$,
+      $N_(P(t, t + Delta))$,
+      $N_(E T)$,
+      [$t^*$ [h]],
+      $max N_(R(t))$,
+    ),
+    ..res
+      .variants
+      .map(v => (
+        oznaczenie(v),
+        pl(v.rr),
+        pl(v.pr),
+        pl(v.etr),
+        pl(v.nrT),
+        pl(v.npT),
+        pl(v.net),
+        pl(v.tStar),
+        pl(v.maxNr),
+      ))
+      .flatten(),
+  )),
+  caption: [Wskaźniki niezawodności i korzyści z redundancji dla wariantów rezerwowania.],
+) <zestawienie>
+
+#let wv(i) = res.variants.at(i)
+#let po-nr = res.order.nrT.map(wv)
+#let po-net = res.order.net.map(wv)
+#let b-nr = po-nr.first()
+#let b-net = po-net.first()
+#let zap-nr = b-nr.spares.first()
+#let zap-net = b-net.spares.first()
+#let w-rown = res.variants.filter(v => not v.series)
+#let w-srodek = res.variants.filter(v => v.tStar < v.horizon)
+#let horyzont = res.variants.first().horizon
+#let dubl(v) = lista(v.spares.map(z => z-id(z.of)))
+#let kolory = lq.color.map.petroff10
+
+= Wnioski
+
+== Ocena wpływu wprowadzenia redundancji na wartości obliczanych wskaźników niezawodności
+
+W chwili $t = 0$ wszystkie elementy są zdatne, więc $R_r (0) = R_s (0) = 1$ i
+$N_(R(0)) = 1$ w każdym wariancie. Element rezerwowy zaczyna dawać korzyść dopiero
+wtedy, gdy element dublowany może już być uszkodzony.
+
+Dla $t = #res.t$ h wskaźniki $R_r (t)$ i $P_r (t, t + Delta)$ rosną niewiele
+(@zestawienie[tabela]). Dla elementu połączonego szeregowo
+$N_(R(t)) = 2 - R_k (t) = 1 + F_k (t)$, czyli niezawodność systemu rośnie
+względnie o prawdopodobieństwo uszkodzenia elementu dublowanego do chwili $t$, a
+to prawdopodobieństwo jest jeszcze małe.
+#if b-nr.series [
+  W wariancie o największym $N_(R(t))$ dublowanym elementem jest
+  #z-id(zap-nr.of):
+  $N_(R(t)) = 2 - R_#zap-nr.of (#res.t "h") = 2 - #pl(el(zap-nr.of).R) = #pl(b-nr.nrT)$.
+]
+
+#if w-rown.len() > 0 [
+  Elementy z podstruktur równoległych, czyli #lista(w-rown.map(dubl)), mają już
+  element alternatywny, więc korzyść z ich zdublowania jest w chwili $t$ jeszcze
+  mniejsza. Podstruktura równoległa jest niezdatna dopiero po uszkodzeniu
+  wszystkich swoich elementów, więc jej zawodność jest iloczynem zawodności tych
+  elementów i w chwili $t$ jest bardzo mała. Dodatkowy element zmniejsza ją
+  jeszcze bardziej, ale prawie nie zmienia $R_r (t)$.
+]
+
+Znacznie silniej redundancja wpływa na oczekiwany czas zdatności: największe
+$N_(E T) = #pl(b-net.net)$, a największe $N_(R(t)) = #pl(b-nr.nrT)$. Czas
+$E T_r$ obejmuje cały okres pracy systemu, także ten, w którym uszkodzenie
+dublowanego elementu jest już prawdopodobne.
+
+#figure(
+  lq.diagram(
+    width: 12cm,
+    height: 7cm,
+    xaxis: (exponent: 0, tick-distance: horyzont / 5),
+    xlabel: $t thin ["h"]$,
+    ylabel: $N_(R(t))$,
+    legend: (position: left + top, dx: 100%),
+    ..res
+      .variants
+      .enumerate()
+      .map(((k, v)) => {
+        let kolor = kolory.at(calc.rem(k, kolory.len()))
+        (
+          lq.plot(
+            v.plot.map(p => p.t),
+            v.plot.map(p => p.nr),
+            mark: none,
+            color: kolor,
+            label: oznaczenie(v),
+          ),
+          lq.scatter((v.tStar,), (float(v.maxNr),), color: kolor, size: 5pt),
+          ..if v.tStar < v.horizon {
+            (
+              lq.vlines(v.tStar, max: float(v.maxNr), stroke: (
+                paint: kolor,
+                dash: "dashed",
+              )),
+            )
+          } else { () },
+        )
+      })
+      .flatten(),
+  ),
+  caption: [Wskaźnik $N_(R(t))$ w zależności od czasu dla wariantów rezerwowania. Punkty oznaczają $max N_(R(t))$ w chwili $t^*$.],
+) <przebiegi>
+
+Przebieg $N_(R(t))$ w przedziale $[0, #liczba(horyzont)]$ h
+(@przebiegi[rysunek]) zależy od tego, gdzie leży element dublowany. Dla elementu połączonego szeregowo
+$N_(R(t)) = 2 - e^(-lambda_k t)$ rośnie przez cały czas, więc $t^*$ wypada na
+końcu przedziału. W podstrukturze równoległej po długim czasie o zdatności
+decyduje jej najbardziej niezawodny element. Gdy dubluje się element bardziej
+zawodny od elementu alternatywnego, jego zapas z czasem traci znaczenie i
+$N_(R(t))$ ma maksimum wewnątrz przedziału.
+#if w-srodek.len() > 0 [
+  Tak jest dla elementów: #lista(w-srodek.map(dubl)). W pozostałych wariantach
+  $t^*$ wypada na końcu przedziału.
+]
+
+== Ocena korzyści uzyskanej z wprowadzenia do systemu elementu rezerwowego i przeanalizowanie, dla którego elementu systemu dodanie elementu rezerwowego dałoby największą korzyść z redundancji $N_(R(t))$, $N_(P(t, t + Delta))$, $N_(E T)$
+
+Kolejność wariantów według wskaźników korzyści przedstawiono w
+@ranking[tabeli].
+
+#figure(
+  table(
+    columns: 5,
+    align: center,
+    table.header(
+      [Miejsce], $N_(R(t))$, $N_(P(t, t + Delta))$, $N_(E T)$, $max N_(R(t))$
+    ),
+    ..range(res.variants.len())
+      .map(k => (
+        [#(k + 1).],
+        ..(res.order.nrT, res.order.npT, res.order.net, res.order.maxNr).map(
+          o => oznaczenie(wv(o.at(k))),
+        ),
+      ))
+      .flatten(),
+  ),
+  caption: [Kolejność wariantów rezerwowania według wskaźników korzyści.],
+) <ranking>
+
+#let pierwsze = (res.order.nrT, res.order.npT, res.order.net).map(
+  o => o.first(),
+)
+#if pierwsze.dedup().len() == 1 [
+  Elementem, którego zdublowanie daje największą korzyść $N_(R(t))$,
+  $N_(P(t, t + Delta))$ i $N_(E T)$, jest #z-id(zap-nr.of).
+] else [
+  Największą korzyść daje zdublowanie elementu: według $N_(R(t))$
+  #dubl(b-nr), według $N_(P(t, t + Delta))$ #dubl(wv(res.order.npT.first())),
+  według $N_(E T)$ #dubl(b-net).
+]
+#if b-nr.series [
+  Jest to element połączony szeregowo, a dla takiego elementu
+  $N_(R(t)) = 2 - e^(-lambda_k t)$ rośnie razem z $lambda_k$. Spośród elementów
+  połączonych szeregowo ten ma największą intensywność uszkodzeń,
+  $lambda_#zap-nr.of = #zap-nr.units dot 10^(-6) thin 1\/h$.
+]
+Element rezerwowy (E#zap-net.id) wydłuża oczekiwany czas zdatności systemu z
+$E T_s = #pl(res.ets)$ h do $E T_r = #pl(b-net.etr)$ h. Dlatego element
+rezerwowy najlepiej dodać właśnie do tego elementu.
+
+#let najpewniejszy = po-nr.filter(v => v.series).last().spares.first().of
+#if res.order.net != res.order.nrT [
+  W chwili $t$ uszkodzenia są jeszcze rzadkie, więc najwięcej dają zapasy
+  elementów szeregowych. $N_(E T)$ i $max N_(R(t))$ opisują długi czas pracy, w
+  którym uszkadzają się także elementy z podstruktur równoległych, dlatego w tych
+  wskaźnikach zapas w podstrukturze równoległej może dać więcej niż zapas
+  elementu szeregowego o małej intensywności uszkodzeń (@ranking[tabela]). Na
+  przykład #z-id(najpewniejszy) ma
+  $lambda_#najpewniejszy = #el(najpewniejszy).lambdaUnits dot 10^(-6) thin 1\/h$ i
+  $E T_#najpewniejszy = #pl(el(najpewniejszy).et)$ h, znacznie więcej niż
+  $E T_s = #pl(res.ets)$ h, więc w czasie pracy systemu rzadko się uszkadza i
+  zapas tego elementu rzadko jest potrzebny.
+]

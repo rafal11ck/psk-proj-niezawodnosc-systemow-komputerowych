@@ -47,10 +47,11 @@ wartości $e^x$.
 
 ## Kolejny wariant rezerwowania
 
-1. Dopisać wariant w `system.yaml` pod `redundancy`, np. `- dup: [2]`.
-   Wybrany element dostaje równolegle drugi taki sam, a program sam nadaje mu
-   kolejny numer (9, 10, 11 …).
-2. Uruchomić `task calc`.
-3. W `spr.typ` dodać punkt z nagłówkiem, krótkim opisem i
-   `#wariant(res.variants.at(1))`, gdzie indeks to pozycja wariantu w
-   `redundancy` liczona od zera.
+Wystarczy dopisać wariant w `system.yaml` pod `redundancy`, np. `- dup: [2]`,
+i uruchomić `task`. Wybrany element dostaje równolegle drugi taki sam, a
+program sam nadaje mu kolejny numer (9, 10, 11 …).
+
+Pierwszy wariant z listy to punkt 3. Każdy następny trafia sam do punktu 4,
+do tabeli zbiorczej w punkcie 5 i do wniosków. W `spr.typ` nic nie trzeba
+zmieniać.
+`
